@@ -1260,6 +1260,14 @@ def get_my_tutor(current_user: models.User = Depends(get_current_user), db: Sess
     return _user_out(tutor)
 
 
+@router.get("/api/users/site-admin", response_model=UserOut)
+def get_site_admin(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    admin = db.query(models.User).filter(models.User.role == models.UserRole.admin).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="No admin found")
+    return _user_out(admin)
+
+
 # ── Tutor Lessons (existing) ──────────────────────────────────────────────────
 
 @router.get("/api/lessons", response_model=list[LessonOut])

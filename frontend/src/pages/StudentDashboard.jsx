@@ -578,41 +578,33 @@ function LeccionesTab({ token }) {
 
 // ── Mensajes (Chat) tab ───────────────────────────────────────────────────────
 
-function MensajesTab({ token, user }) {
-  const [tutor, setTutor] = useState(null)
+function ChatThread({ token, user, contact, subtitle }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [loading, setLoading] = useState(true)
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/users/my-tutor`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null).then(setTutor).finally(() => setLoading(false))
-  }, [])
-
-  useEffect(() => {
-    if (!tutor) return
     fetchMsgs()
     const iv = setInterval(fetchMsgs, 5000)
     return () => clearInterval(iv)
-  }, [tutor])
+  }, [contact.id])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   function fetchMsgs() {
-    fetch(`${API_BASE}/api/chat/${tutor.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/chat/${contact.id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(setMessages).catch(() => {})
   }
 
   async function send(e) {
     e.preventDefault()
     const text = input.trim()
-    if (!text || !tutor || sending) return
+    if (!text || sending) return
     setSending(true)
     setInput('')
     try {
-      const res = await fetch(`${API_BASE}/api/chat/${tutor.id}`, {
+      const res = await fetch(`${API_BASE}/api/chat/${contact.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ content: text }),
@@ -621,31 +613,22 @@ function MensajesTab({ token, user }) {
     } finally { setSending(false) }
   }
 
-  if (loading) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Cargando…</p>
-
-  if (!tutor) return (
-    <div style={{ textAlign: 'center', padding: '50px 20px', background: '#fff', borderRadius: 16, border: '2px dashed rgba(255,111,97,0.45)' }}>
-      <div style={{ fontSize: 44, marginBottom: 12 }}>💬</div>
-      <p style={{ color: '#6b7280', fontSize: 14 }}>Todavía no tienes un tutor. ¡El administrador te asignará uno pronto!</p>
-    </div>
-  )
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 520 }}>
       <div style={{ background: 'rgba(255,111,97,0.1)', borderRadius: '14px 14px 0 0', padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', border: `2px solid ${AMBER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, color: AMBER }}>
-          {tutor.full_name[0].toUpperCase()}
+          {contact.full_name[0].toUpperCase()}
         </div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{tutor.full_name}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{tutor.school || 'New Jersey'} · Tu tutor</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{contact.full_name}</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{subtitle}</div>
         </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', background: '#f8fafc', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid rgba(0,128,128,0.18)', borderTop: 'none' }}>
         {messages.length === 0 && (
           <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginTop: 60 }}>
-            Ningún mensaje todavía. ¡Saluda a tu tutor! 👋
+            Ningún mensaje todavía.
           </p>
         )}
         {messages.map(m => {
@@ -657,6 +640,7 @@ function MensajesTab({ token, user }) {
                 color: isMe ? '#fff' : '#1e293b',
                 borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                 padding: '10px 14px', fontSize: 14, lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                 border: isMe ? 'none' : '1px solid #e5e7eb',
               }}>
@@ -675,13 +659,63 @@ function MensajesTab({ token, user }) {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={`Escribe a ${tutor.full_name}…`}
+          placeholder={`Escribe a ${contact.full_name}…`}
           style={{ flex: 1, border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '9px 13px', fontSize: 14, outline: 'none', fontFamily: "'Times New Roman', Times, serif" }}
         />
         <button type="submit" disabled={!input.trim() || sending} style={{ background: AMBER, color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: !input.trim() || sending ? 0.6 : 1 }}>
           {sending ? '…' : 'Enviar →'}
         </button>
       </form>
+    </div>
+  )
+}
+
+function MensajesTab({ token, user }) {
+  const [admin, setAdmin] = useState(null)
+  const [tutor, setTutor] = useState(null)
+  const [activeThread, setActiveThread] = useState('admin')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_BASE}/api/users/site-admin`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null),
+      fetch(`${API_BASE}/api/users/my-tutor`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null),
+    ]).then(([a, t]) => {
+      setAdmin(a)
+      setTutor(t)
+      setActiveThread(t ? 'tutor' : 'admin')
+    }).finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Cargando…</p>
+  if (!admin) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>No se pudo cargar los mensajes.</p>
+
+  const threads = [
+    { key: 'admin', contact: admin, subtitle: 'Fundador · PeerLingo' },
+    ...(tutor ? [{ key: 'tutor', contact: tutor, subtitle: `${tutor.school || 'New Jersey'} · Tu tutor` }] : []),
+  ]
+
+  const active = threads.find(t => t.key === activeThread) || threads[0]
+
+  return (
+    <div>
+      {threads.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {threads.map(t => (
+            <button key={t.key} onClick={() => setActiveThread(t.key)} style={{
+              padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              background: activeThread === t.key ? AMBER : 'rgba(0,128,128,0.07)',
+              color: activeThread === t.key ? '#fff' : '#008080',
+              border: activeThread === t.key ? 'none' : '1px solid rgba(0,128,128,0.25)',
+            }}>
+              {t.contact.full_name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      )}
+      <ChatThread key={active.key} token={token} user={user} contact={active.contact} subtitle={active.subtitle} />
     </div>
   )
 }

@@ -691,17 +691,17 @@ def _send_reset_email(to_email: str, full_name: str, reset_url: str) -> None:
         return
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Reset your Virtual Peers password"
+    msg["Subject"] = "Reset your PeerLingo password"
     msg["From"] = from_email
     msg["To"] = to_email
 
     text_body = (
         f"Hi {full_name},\n\n"
-        f"Click the link below to reset your Virtual Peers password:\n\n{reset_url}\n\n"
+        f"Click the link below to reset your PeerLingo password:\n\n{reset_url}\n\n"
         f"This link expires in 1 hour. If you didn't request this, you can safely ignore this email."
     )
     html_body = f"""<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px">
-      <h2 style="color:#6366f1;margin-bottom:8px">Virtual Peers</h2>
+      <h2 style="color:#6366f1;margin-bottom:8px">PeerLingo</h2>
       <p style="color:#374151">Hi {full_name},</p>
       <p style="color:#374151">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
       <a href="{reset_url}" style="display:inline-block;background:#6366f1;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;margin:20px 0">
@@ -709,7 +709,7 @@ def _send_reset_email(to_email: str, full_name: str, reset_url: str) -> None:
       </a>
       <p style="color:#9ca3af;font-size:13px">If you didn't request a password reset, you can safely ignore this email.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="color:#9ca3af;font-size:12px">Virtual Peers · Free peer tutoring across borders</p>
+      <p style="color:#9ca3af;font-size:12px">PeerLingo · Free peer tutoring across borders</p>
     </div>"""
 
     msg.attach(MIMEText(text_body, "plain"))
@@ -1027,7 +1027,7 @@ def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_c
         first_name = current_user.full_name.split()[0] if current_user.full_name else 'Estudiante'
         welcome_text = (
             f"¡Hola {first_name}! 🌟\n\n"
-            "Me llamo Ethan Isenberg, fundador y creador de Virtual Peers. "
+            "Me llamo Ethan Isenberg, fundador y creador de PeerLingo. "
             "En nombre de todo el equipo, ¡bienvenido/a a nuestra familia!\n\n"
             "Estamos muy emocionados de que hayas dado este gran paso. "
             "Muy pronto te emparejaremos con un tutor que se adapte perfectamente a tus preferencias y objetivos. "
@@ -1039,7 +1039,7 @@ def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_c
             "¡Mucho ánimo y bienvenido/a a esta aventura!\n\n"
             "Con entusiasmo,\n"
             "Ethan Isenberg\n"
-            "Fundador, Virtual Peers"
+            "Fundador, PeerLingo"
         )
         welcome_msg = models.ChatMessage(
             sender_id=admin.id,

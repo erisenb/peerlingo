@@ -16,7 +16,7 @@ const TEST_ACCOUNTS = [
       full_name: 'Alex Rivera',
       password: 'testpass',
       role: 'admin',
-      school: 'Virtual Peers HQ',
+      school: 'PeerLingo HQ',
       grade: null,
     },
     dest: '/dashboard/admin',

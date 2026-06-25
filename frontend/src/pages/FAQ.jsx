@@ -7,11 +7,11 @@ import PublicFooter from '../components/PublicFooter'
 const CONTENT = {
   en: {
     title: 'Frequently Asked Questions',
-    subtitle: 'Everything you need to know about Virtual Peers.',
+    subtitle: 'Everything you need to know about PeerLingo.',
     tab: { students: 'Students', mentors: 'Tutors / Volunteers' },
     students: [
       {
-        q: 'Is Virtual Peers completely free?',
+        q: 'Is PeerLingo completely free?',
         a: 'Yes — 100% free for students. There are no fees, no subscriptions, and no hidden costs of any kind.',
       },
       {
@@ -70,7 +70,7 @@ const CONTENT = {
       },
       {
         q: 'How do the video sessions work?',
-        a: 'You\'ll see your upcoming sessions on your tutor dashboard, each with the student\'s name and a button to start the video call directly through Virtual Peers.',
+        a: 'You\'ll see your upcoming sessions on your tutor dashboard, each with the student\'s name and a button to start the video call directly through PeerLingo.',
       },
       {
         q: 'Is there any training or orientation?',
@@ -88,11 +88,11 @@ const CONTENT = {
   },
   es: {
     title: 'Preguntas Frecuentes',
-    subtitle: 'Todo lo que necesitas saber sobre Virtual Peers.',
+    subtitle: 'Todo lo que necesitas saber sobre PeerLingo.',
     tab: { students: 'Estudiantes', mentors: 'Tutores / Voluntarios' },
     students: [
       {
-        q: '¿Virtual Peers es completamente gratuito?',
+        q: '¿PeerLingo es completamente gratuito?',
         a: 'Sí — 100% gratuito para estudiantes. No hay tarifas, suscripciones ni costos ocultos de ningún tipo.',
       },
       {
@@ -151,7 +151,7 @@ const CONTENT = {
       },
       {
         q: '¿Cómo funcionan las sesiones de video?',
-        a: 'Verás tus próximas sesiones en tu panel de tutor, cada una con el nombre del estudiante y un botón para iniciar la videollamada directamente en Virtual Peers.',
+        a: 'Verás tus próximas sesiones en tu panel de tutor, cada una con el nombre del estudiante y un botón para iniciar la videollamada directamente en PeerLingo.',
       },
       {
         q: '¿Hay alguna capacitación u orientación?',

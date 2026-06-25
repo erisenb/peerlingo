@@ -82,7 +82,7 @@ export default function PublicNav({ transparent = false }) {
       <nav style={navStyle}>
         <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flexShrink: 0 }}>
           <Logo height={34} />
-          <span style={{ color: '#0f2b3d', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>Virtual Peers</span>
+          <span style={{ color: '#0f2b3d', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>PeerLingo</span>
         </div>
 
         {!isMobile && (

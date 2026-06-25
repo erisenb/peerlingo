@@ -18,12 +18,12 @@ function useWindowWidth() {
 const CONTENT = {
   en: {
     badge: 'Our Story',
-    title: 'About Virtual Peers',
+    title: 'About PeerLingo',
     subtitle: 'Two communities. Two shared languages. A story still being written.',
     story: [
       'In the highlands and cities of Peru, there are adolescents who carry extraordinary ambition. They have grown up in underserved communities — places where access to quality education, resources, and economic opportunity is limited not by lack of drive, but by circumstance. And yet they study. They show up. They dream in a language they are still learning.',
       'English, for many of them, is not just a subject. It is a door. A path toward university, toward careers, toward a future that feels possible in a way it did not before. But practicing English takes more than a workbook. It takes conversation. It takes someone on the other side who listens, corrects, encourages, and comes back next week.',
-      'Virtual Peers was built around a simple idea: somewhere in New Jersey, there is a bilingual student or young adult who has time, warmth, and something real to share. And somewhere in Peru, there is a student who could change the entire trajectory of their life if they had someone to practice with.',
+      'PeerLingo was built around a simple idea: somewhere in New Jersey, there is a bilingual student or young adult who has time, warmth, and something real to share. And somewhere in Peru, there is a student who could change the entire trajectory of their life if they had someone to practice with.',
       'We connect those two people. Through live video sessions, guided lesson plans, and genuine human connection, we make the distance between those two worlds feel very small. Tutors volunteer their time and bring their language, their culture, and their presence. Students bring their courage and their hunger to learn.',
       'What happens between them — that is the story we are still writing, one session at a time.',
     ],
@@ -46,12 +46,12 @@ const CONTENT = {
   },
   es: {
     badge: 'Nuestra historia',
-    title: 'Sobre Virtual Peers',
+    title: 'Sobre PeerLingo',
     subtitle: 'Dos comunidades. Dos idiomas compartidos. Una historia que todavía se está escribiendo.',
     story: [
       'En las ciudades y regiones de Perú, hay adolescentes con una ambición extraordinaria. Han crecido en comunidades con recursos limitados — lugares donde el acceso a una educación de calidad y a oportunidades económicas es escaso, no por falta de esfuerzo, sino por sus circunstancias. Aun así estudian. Se presentan. Sueñan en un idioma que todavía están aprendiendo.',
       'El inglés, para muchos de ellos, no es solo una materia. Es una puerta. Un camino hacia la universidad, hacia carreras profesionales, hacia un futuro que se siente posible de una manera en que antes no lo era. Pero practicar inglés requiere más que un libro de trabajo. Requiere conversación. Requiere a alguien al otro lado que escuche, corrija, anime y regrese la semana siguiente.',
-      'Virtual Peers fue creado alrededor de una idea simple: en algún lugar de Nueva Jersey, hay un estudiante o joven bilingüe que tiene tiempo, calidez y algo real que compartir. Y en algún lugar de Perú, hay un estudiante cuya vida podría cambiar por completo si tuviera a alguien con quien practicar.',
+      'PeerLingo fue creado alrededor de una idea simple: en algún lugar de Nueva Jersey, hay un estudiante o joven bilingüe que tiene tiempo, calidez y algo real que compartir. Y en algún lugar de Perú, hay un estudiante cuya vida podría cambiar por completo si tuviera a alguien con quien practicar.',
       'Conectamos a esas dos personas. A través de sesiones de video en vivo, planes de lecciones guiadas y una conexión humana genuina, hacemos que la distancia entre esos dos mundos se sienta muy pequeña. Los tutores ofrecen su tiempo y aportan su idioma, su cultura y su presencia. Los estudiantes aportan su valentía y sus ganas de aprender.',
       'Lo que sucede entre ellos — esa es la historia que todavía estamos escribiendo, una sesión a la vez.',
     ],

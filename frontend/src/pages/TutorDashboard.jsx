@@ -928,7 +928,7 @@ export default function TutorDashboard() {
             {t('tutor.welcome')}, {user?.full_name.split(' ')[0]}! 🎓
           </h2>
           <p style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>
-            {user?.school} · Virtual Peers Tutor
+            {user?.school} · PeerLingo Tutor
           </p>
         </div>
 

@@ -35,7 +35,7 @@ export default function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
         onClick={() => navigate('/')}>
         <Logo height={44} />
-        <span style={{ fontSize: 18, fontWeight: 900, color: TEAL, fontFamily: 'Pacifico, cursive' }}>Virtual Peers</span>
+        <span style={{ fontSize: 18, fontWeight: 900, color: TEAL, fontFamily: 'Pacifico, cursive' }}>PeerLingo</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

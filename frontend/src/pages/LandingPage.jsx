@@ -8,7 +8,7 @@ import PublicFooter from '../components/PublicFooter'
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1758525861882-39151c7a9804?w=1400&q=80'
 
 const ES_TESTIMONIALS = [
-  { title: 'Vida Cambiada',      quote: 'Antes no podía decir ni "hello". Después de tres meses con mi tutor, puedo tener conversaciones completas en inglés. Virtual Peers cambió mi vida.', name: 'Lucía M.' },
+  { title: 'Vida Cambiada',      quote: 'Antes no podía decir ni "hello". Después de tres meses con mi tutor, puedo tener conversaciones completas en inglés. PeerLingo cambió mi vida.', name: 'Lucía M.' },
   { title: 'Cultura Americana',  quote: 'Mi tutor me enseñó cómo funciona la cultura universitaria en EE.UU. — las solicitudes, los clubs, el deporte. ¡Aprendí tanto fuera de las lecciones!', name: 'Diego P.' },
   { title: 'Plataforma Perfecta', quote: 'Pensé que la plataforma iba a ser difícil, pero fue facilísima. Desde el primer día pude ver mis tareas, escribirle a mi tutora y unirme a las reuniones.', name: 'Valentina C.' },
   { title: 'Tutora Increíble',   quote: 'Mi tutora siempre está disponible y se preocupa de verdad por mi progreso. Esta experiencia me dio confianza para hablar inglés con cualquier persona.', name: 'Sebastián V.' },
@@ -22,7 +22,7 @@ const EN_TESTIMONIALS = [
   { title: 'More Than Hours',    quote: 'I needed community service hours for NHS, but this is the most meaningful thing I\'ve done. You\'re not just logging hours — you\'re changing someone\'s future.', name: 'Tyler R.' },
   { title: 'Unexpected Passion', quote: 'I never thought I\'d love tutoring, but watching my student go from broken sentences to full paragraphs makes me want to keep doing this way beyond any requirement.', name: 'Aiden K.' },
   { title: 'Goes Both Ways',     quote: 'My student taught me as much as I taught him. I learned about Peruvian food, holidays, and family life. I\'m the one who feels enriched — it genuinely goes both ways.', name: 'Sofia W.' },
-  { title: 'Found a Calling',    quote: 'This made me realize I actually want to go into education. I signed up to tutor two more students. Virtual Peers turned a checkbox into something I genuinely care about.', name: 'Marcus T.' },
+  { title: 'Found a Calling',    quote: 'This made me realize I actually want to go into education. I signed up to tutor two more students. PeerLingo turned a checkbox into something I genuinely care about.', name: 'Marcus T.' },
   { title: 'Zero Friction',      quote: 'The platform is effortless — log in, check messages, video call. I spent zero time figuring it out and all my time actually tutoring. Couldn\'t be simpler.', name: 'Chloe N.' },
   { title: 'Best Service Ever',  quote: 'Best community service experience by far. You build empathy, patience, and communication skills all at once. My college essays practically wrote themselves afterward.', name: 'Jordan M.' },
 ]

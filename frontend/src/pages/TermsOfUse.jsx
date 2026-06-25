@@ -8,7 +8,7 @@ const EN = {
   sections: [
     {
       heading: 'User-Generated Content',
-      body: 'Virtual Peers is a platform that enables peer-to-peer communication between students and volunteer tutors. We are not responsible for any content posted, shared, or transmitted by users of the platform. Users assume full responsibility for the content they create and share.',
+      body: 'PeerLingo is a platform that enables peer-to-peer communication between students and volunteer tutors. We are not responsible for any content posted, shared, or transmitted by users of the platform. Users assume full responsibility for the content they create and share.',
     },
     {
       heading: 'Platform Safety',
@@ -16,7 +16,7 @@ const EN = {
     },
     {
       heading: 'Appropriate Use',
-      body: 'By using Virtual Peers, you agree to use the platform exclusively for educational and tutoring purposes. Harassment, bullying, sharing of inappropriate content, or any conduct that disrupts the learning environment is strictly prohibited and may result in account termination.',
+      body: 'By using PeerLingo, you agree to use the platform exclusively for educational and tutoring purposes. Harassment, bullying, sharing of inappropriate content, or any conduct that disrupts the learning environment is strictly prohibited and may result in account termination.',
     },
     {
       heading: 'Minors',
@@ -35,7 +35,7 @@ const ES = {
   sections: [
     {
       heading: 'Contenido generado por el usuario',
-      body: 'Virtual Peers es una plataforma que facilita la comunicación entre estudiantes y tutores voluntarios. No somos responsables del contenido publicado, compartido o transmitido por los usuarios. Los usuarios asumen plena responsabilidad por el contenido que crean y comparten.',
+      body: 'PeerLingo es una plataforma que facilita la comunicación entre estudiantes y tutores voluntarios. No somos responsables del contenido publicado, compartido o transmitido por los usuarios. Los usuarios asumen plena responsabilidad por el contenido que crean y comparten.',
     },
     {
       heading: 'Seguridad en la plataforma',
@@ -43,7 +43,7 @@ const ES = {
     },
     {
       heading: 'Uso apropiado',
-      body: 'Al usar Virtual Peers, aceptas utilizar la plataforma exclusivamente con fines educativos y de tutoría. El acoso, intimidación, compartir contenido inapropiado o cualquier conducta que perturbe el entorno de aprendizaje está estrictamente prohibida.',
+      body: 'Al usar PeerLingo, aceptas utilizar la plataforma exclusivamente con fines educativos y de tutoría. El acoso, intimidación, compartir contenido inapropiado o cualquier conducta que perturbe el entorno de aprendizaje está estrictamente prohibida.',
     },
     {
       heading: 'Menores de edad',

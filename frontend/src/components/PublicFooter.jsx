@@ -12,7 +12,7 @@ export default function PublicFooter() {
       alignItems: 'center', justifyContent: 'space-between',
     }}>
       <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-        © {new Date().getFullYear()} Virtual Peers · {t('footer.tagline')}
+        © {new Date().getFullYear()} PeerLingo · {t('footer.tagline')}
       </span>
       <div style={{ display: 'flex', gap: 20 }}>
         <Link to="/terms" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textDecoration: 'none' }}

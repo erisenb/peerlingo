@@ -149,7 +149,7 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
       }}>
         <div style={{ fontSize: 52, marginBottom: 8 }}>⭐</div>
         <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 4 }}>{t('student.welcome')}, {firstName}!</h2>
-        <p style={{ fontSize: 15, opacity: 0.95 }}>Virtual Peers 🌐</p>
+        <p style={{ fontSize: 15, opacity: 0.95 }}>PeerLingo 🌐</p>
         {user?.grade && (
           <span style={{ display: 'inline-block', marginTop: 10, background: 'rgba(255,255,255,0.25)', borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700 }}>
             {user.grade}

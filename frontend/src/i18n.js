@@ -68,7 +68,7 @@ const translations = {
     'hiw.tab.mentors': 'Tutors / Volunteers',
     'hiw.subtitle': 'Select your role to see how it works',
     'hiw.cta.heading': 'Ready to get started?',
-    'hiw.cta.sub': 'Join Virtual Peers today — always free.',
+    'hiw.cta.sub': 'Join PeerLingo today — always free.',
     'hiw.cta.mentor': 'Join as a Tutor',
     'hiw.cta.student': 'Join as a Student',
     'login.subtitle': 'Sign in to continue',
@@ -110,7 +110,7 @@ const translations = {
     'login.error': 'Invalid email or password',
 
     // Register
-    'register.title': 'Join Virtual Peers',
+    'register.title': 'Join PeerLingo',
     'register.subtitle': 'Create your account',
     'register.name': 'Full Name',
     'register.email': 'Email Address',
@@ -274,7 +274,7 @@ const translations = {
     'hiw.tab.mentors': 'Tutores / Voluntarios',
     'hiw.subtitle': 'Selecciona tu rol para ver cómo funciona',
     'hiw.cta.heading': '¿Listo para comenzar?',
-    'hiw.cta.sub': 'Únete a Virtual Peers hoy — siempre gratis.',
+    'hiw.cta.sub': 'Únete a PeerLingo hoy — siempre gratis.',
     'hiw.cta.mentor': 'Únete como tutor',
     'hiw.cta.student': 'Únete como estudiante',
     'login.subtitle': 'Inicia sesión para continuar',
@@ -316,7 +316,7 @@ const translations = {
     'login.error': 'Correo o contraseña incorrectos',
 
     // Register
-    'register.title': 'Únete a Virtual Peers',
+    'register.title': 'Únete a PeerLingo',
     'register.subtitle': 'Crea tu cuenta',
     'register.name': 'Nombre completo',
     'register.email': 'Correo electrónico',

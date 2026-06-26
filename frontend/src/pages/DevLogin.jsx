@@ -4,94 +4,163 @@ import { useAuth } from '../context/AuthContext'
 import { API_BASE } from '../api'
 import Logo from '../components/Logo'
 
-const TEST_ACCOUNTS = [
+const DEMO_ACCOUNTS = [
   {
+    email: 'admin@test.com',
     role: 'admin',
     label: 'Administrator',
     icon: '🛠️',
     color: '#7c3aed',
     bg: '#ede9fe',
-    payload: {
-      email: 'admin@test.com',
-      full_name: 'Alex Rivera',
-      password: 'testpass',
-      role: 'admin',
-      school: 'PeerLingo HQ',
-      grade: null,
-    },
+    name: 'Alex Rivera',
+    desc: 'PeerLingo HQ',
     dest: '/dashboard/admin',
   },
   {
+    email: 'demo-tutor1@peerlingo.test',
     role: 'tutor',
     label: 'Tutor',
     icon: '🎓',
     color: '#2563eb',
     bg: '#dbeafe',
-    payload: {
-      email: 'tutor@test.com',
-      full_name: 'Jamie Chen',
-      password: 'testpass',
-      role: 'tutor',
-      school: 'New Jersey High School',
-      grade: '11th Grade',
-    },
+    name: 'Jamie Chen',
+    desc: 'Newark NJ · 11th Grade',
     dest: '/dashboard/tutor',
   },
   {
+    email: 'demo-tutor2@peerlingo.test',
+    role: 'tutor',
+    label: 'Tutor',
+    icon: '🎓',
+    color: '#2563eb',
+    bg: '#dbeafe',
+    name: 'Sofia Ramirez',
+    desc: 'Summit NJ · 12th Grade',
+    dest: '/dashboard/tutor',
+  },
+  {
+    email: 'demo-tutor3@peerlingo.test',
+    role: 'tutor',
+    label: 'Tutor',
+    icon: '🎓',
+    color: '#2563eb',
+    bg: '#dbeafe',
+    name: 'Tyler Brooks',
+    desc: 'Westfield NJ · 10th Grade',
+    dest: '/dashboard/tutor',
+  },
+  {
+    email: 'demo-student1@peerlingo.test',
     role: 'student',
     label: 'Student',
     icon: '⭐',
     color: '#d97706',
     bg: '#fef3c7',
-    payload: {
-      email: 'student@test.com',
-      full_name: 'Maria Flores',
-      password: 'testpass',
-      role: 'student',
-      school: 'Peru School',
-      grade: '4th Grade',
-    },
+    name: 'Maria Flores',
+    desc: 'Lima, Peru · Beginner',
+    dest: '/dashboard/student',
+  },
+  {
+    email: 'demo-student2@peerlingo.test',
+    role: 'student',
+    label: 'Student',
+    icon: '⭐',
+    color: '#d97706',
+    bg: '#fef3c7',
+    name: 'Carlos Mendez',
+    desc: 'Bogotá, Colombia · Intermediate',
+    dest: '/dashboard/student',
+  },
+  {
+    email: 'demo-student3@peerlingo.test',
+    role: 'student',
+    label: 'Student',
+    icon: '⭐',
+    color: '#d97706',
+    bg: '#fef3c7',
+    name: 'Isabella Torres',
+    desc: 'Mexico City · Advanced',
     dest: '/dashboard/student',
   },
 ]
 
+const adminAcct = DEMO_ACCOUNTS.find(a => a.role === 'admin')
+const tutors = DEMO_ACCOUNTS.filter(a => a.role === 'tutor')
+const students = DEMO_ACCOUNTS.filter(a => a.role === 'student')
+
 export default function DevLogin() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [status, setStatus] = useState({})       // enter status per role
-  const [resetSt, setResetSt] = useState({})     // reset status per role
+  const [status, setStatus] = useState({})
+  const [resetSt, setResetSt] = useState({})
 
   async function enter(acct) {
-    setStatus(s => ({ ...s, [acct.role]: 'loading' }))
+    setStatus(s => ({ ...s, [acct.email]: 'loading' }))
     try {
       const res = await fetch(`${API_BASE}/api/dev/ensure-accounts`, { method: 'POST' })
       if (!res.ok) throw new Error('server')
       const accounts = await res.json()
-      const { token, user } = accounts[acct.role]
+      const { token, user } = accounts[acct.email]
       await login(token, user)
+      localStorage.setItem('vp_demo_email', user.email)
       navigate(acct.dest)
     } catch (e) {
       const msg = e instanceof TypeError ? 'offline' : 'error'
-      setStatus(s => ({ ...s, [acct.role]: msg }))
+      setStatus(s => ({ ...s, [acct.email]: msg }))
     }
   }
 
   async function resetForReg(acct) {
-    setResetSt(s => ({ ...s, [acct.role]: 'loading' }))
+    setResetSt(s => ({ ...s, [acct.email]: 'loading' }))
     try {
-      // Ensure the account exists first
       await fetch(`${API_BASE}/api/dev/ensure-accounts`, { method: 'POST' })
-      const res = await fetch(`${API_BASE}/api/dev/reset-for-registration?role=${acct.role}`, { method: 'POST' })
+      const res = await fetch(
+        `${API_BASE}/api/dev/reset-for-registration?email=${encodeURIComponent(acct.email)}`,
+        { method: 'POST' }
+      )
       if (!res.ok) throw new Error('server')
       const data = await res.json()
-      // Log in as the reset account so the registration flow starts immediately
       await login(data.token, data.user)
+      localStorage.setItem('vp_demo_email', acct.email)
       navigate(acct.dest)
     } catch (e) {
       const msg = e instanceof TypeError ? 'offline' : 'error'
-      setResetSt(s => ({ ...s, [acct.role]: msg }))
-      setTimeout(() => setResetSt(s => ({ ...s, [acct.role]: null })), 3000)
+      setResetSt(s => ({ ...s, [acct.email]: msg }))
+      setTimeout(() => setResetSt(s => ({ ...s, [acct.email]: null })), 3000)
     }
+  }
+
+  function AccountCard({ acct }) {
+    const st = status[acct.email]
+    return (
+      <button
+        onClick={() => enter(acct)}
+        disabled={st === 'loading'}
+        style={{
+          background: acct.bg,
+          border: `3px solid ${acct.color}`,
+          borderRadius: 20,
+          padding: '22px 18px',
+          cursor: st === 'loading' ? 'not-allowed' : 'pointer',
+          width: 170,
+          textAlign: 'center',
+          transition: 'transform 0.15s',
+          opacity: st === 'loading' ? 0.6 : 1,
+        }}
+        onMouseEnter={e => { if (st !== 'loading') e.currentTarget.style.transform = 'translateY(-4px)' }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
+      >
+        <div style={{ fontSize: 34, marginBottom: 8 }}>{acct.icon}</div>
+        <div style={{ fontSize: 14, fontWeight: 900, color: acct.color, marginBottom: 2 }}>{acct.name}</div>
+        <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>{acct.desc}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: st === 'offline' ? '#dc2626' : acct.color }}>
+          {st === 'loading' ? 'Entering…'
+            : st === 'offline' ? 'Start backend first'
+            : st === 'error' ? '❌ Error'
+            : 'Enter →'}
+        </div>
+      </button>
+    )
   }
 
   return (
@@ -105,105 +174,98 @@ export default function DevLogin() {
       position: 'relative',
       zIndex: 1,
       padding: 24,
-      gap: 24,
+      gap: 20,
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Logo height={72} /></div>
         <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 4, color: '#1e293b', fontFamily: 'Pacifico, cursive' }}>Dev Quick Access</h1>
-        <p style={{ color: '#64748b', fontSize: 14 }}>Jump straight into any role — no credentials needed</p>
+        <p style={{ color: '#64748b', fontSize: 14 }}>Jump straight into any role — profiles auto-reset on logout</p>
       </div>
 
-      {/* ── Enter as existing account ── */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {TEST_ACCOUNTS.map(acct => (
-          <button
-            key={acct.role}
-            onClick={() => enter(acct)}
-            disabled={status[acct.role] === 'loading'}
-            style={{
-              background: acct.bg,
-              border: `3px solid ${acct.color}`,
-              borderRadius: 20,
-              padding: '28px 28px',
-              cursor: 'pointer',
-              width: 200,
-              textAlign: 'center',
-              transition: 'transform 0.15s',
-              opacity: status[acct.role] === 'loading' ? 0.6 : 1,
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-          >
-            <div style={{ fontSize: 44, marginBottom: 10 }}>{acct.icon}</div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: acct.color, marginBottom: 4 }}>
-              {acct.label}
-            </div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
-              {acct.payload.full_name}
-            </div>
-            <div style={{ fontSize: 11, color: status[acct.role] === 'offline' ? '#dc2626' : acct.color, fontWeight: 700 }}>
-              {status[acct.role] === 'loading' ? 'Entering…'
-                : status[acct.role] === 'offline' ? 'Start backend first'
-                : status[acct.role] === 'error' ? '❌ Error'
-                : 'Click to enter →'}
-            </div>
-          </button>
-        ))}
+      {/* Admin */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Admin</div>
+        <AccountCard acct={adminAcct} />
       </div>
 
-      <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-        Creates test accounts automatically if they don't exist yet
+      {/* Tutors */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tutors</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {tutors.map(acct => <AccountCard key={acct.email} acct={acct} />)}
+        </div>
+      </div>
+
+      {/* Students */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Students</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {students.map(acct => <AccountCard key={acct.email} acct={acct} />)}
+        </div>
+      </div>
+
+      <p style={{ color: '#94a3b8', fontSize: 12, marginTop: -4 }}>
+        Creates accounts automatically if they don't exist yet
       </p>
 
-      {/* ── Registration flow testing ── */}
+      {/* Registration flow testing */}
       <div style={{
         background: '#fff',
         border: '1.5px dashed #cbd5e1',
         borderRadius: 20,
-        padding: '24px 32px',
-        maxWidth: 560,
+        padding: '22px 28px',
+        maxWidth: 620,
         width: '100%',
         textAlign: 'center',
       }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Registration Flow Testing
         </div>
-        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20, lineHeight: 1.6 }}>
-          Wipes survey + profile data on a test account and logs you in — triggering the full registration experience from scratch.
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>
+          Wipes survey + profile data and logs you in — triggering the full registration experience from scratch.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {TEST_ACCOUNTS.filter(a => a.role !== 'admin').map(acct => {
-            const rst = resetSt[acct.role]
-            return (
-              <button
-                key={acct.role}
-                onClick={() => resetForReg(acct)}
-                disabled={rst === 'loading'}
-                style={{
-                  background: rst === 'loading' ? '#f1f5f9' : '#fff',
-                  border: `2px solid ${acct.color}`,
-                  borderRadius: 12,
-                  padding: '10px 20px',
-                  cursor: rst === 'loading' ? 'not-allowed' : 'pointer',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: rst === 'error' ? '#dc2626' : acct.color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  transition: 'all 0.15s',
-                  opacity: rst === 'loading' ? 0.6 : 1,
-                }}
-                onMouseEnter={e => { if (rst !== 'loading') e.currentTarget.style.background = acct.bg }}
-                onMouseLeave={e => { if (rst !== 'loading') e.currentTarget.style.background = '#fff' }}
-              >
-                <span style={{ fontSize: 16 }}>{acct.icon}</span>
-                {rst === 'loading' ? 'Resetting…'
-                  : rst === 'error' ? '❌ Error — backend running?'
-                  : `↺ Reset ${acct.label} & test registration`}
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { label: 'Tutors', accounts: tutors, color: '#2563eb', bg: '#dbeafe' },
+            { label: 'Students', accounts: students, color: '#d97706', bg: '#fef3c7' },
+          ].map(({ label, accounts, color, bg }) => (
+            <div key={label}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase' }}>{label}</div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {accounts.map(acct => {
+                  const rst = resetSt[acct.email]
+                  return (
+                    <button
+                      key={acct.email}
+                      onClick={() => resetForReg(acct)}
+                      disabled={rst === 'loading'}
+                      style={{
+                        background: rst === 'loading' ? '#f1f5f9' : '#fff',
+                        border: `2px solid ${color}`,
+                        borderRadius: 10,
+                        padding: '8px 14px',
+                        cursor: rst === 'loading' ? 'not-allowed' : 'pointer',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: rst === 'error' ? '#dc2626' : color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        transition: 'all 0.15s',
+                        opacity: rst === 'loading' ? 0.6 : 1,
+                      }}
+                      onMouseEnter={e => { if (rst !== 'loading') e.currentTarget.style.background = bg }}
+                      onMouseLeave={e => { if (rst !== 'loading') e.currentTarget.style.background = '#fff' }}
+                    >
+                      {rst === 'loading' ? 'Resetting…'
+                        : rst === 'error' ? '❌ Error — backend running?'
+                        : `↺ ${acct.name}`}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

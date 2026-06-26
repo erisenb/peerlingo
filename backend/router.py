@@ -62,6 +62,15 @@ with database.engine.connect() as _c:
         _c.commit()
     except Exception:
         pass
+    # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
+    try:
+        _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
+        _row = _c.fetchone()
+        if _row and 'vp_admin_lessons' in (_row[0] or ''):
+            _c.execute(text("DROP TABLE IF EXISTS vp_student_curriculum"))
+            _c.commit()
+    except Exception:
+        pass
 
 
 # ── Curriculum seed ────────────────────────────────────────────────────────────
@@ -753,71 +762,191 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return AuthResponse(access_token=create_access_token(user.id),
                         token_type="bearer", user=_user_out(user))
 
+_DEV_BASELINE: dict = {
+    "admin@test.com": dict(
+        full_name="Alex Rivera", role=models.UserRole.admin,
+        school="PeerLingo HQ", grade=None,
+        bio=None, goals=None, city=None, state=None, country=None,
+        date_of_birth=None, english_level=None, preferred_focus=None,
+        preferred_tutor_gender=None, survey_completed=False,
+        spanish_level=None, availability_days=None, availability_times=None,
+        phone=None, receive_reminders=True,
+    ),
+    "demo-tutor1@peerlingo.test": dict(
+        full_name="Jamie Chen", role=models.UserRole.tutor,
+        school="New Jersey High School", grade="11th Grade",
+        bio="Hi! I'm a junior at New Jersey High School who loves helping Spanish speakers learn English.",
+        goals=None, city="Newark", state="NJ", country=None,
+        date_of_birth=None, english_level=None, preferred_focus=None,
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level="conversational", availability_days="Mon,Wed,Fri", availability_times="Afternoon",
+        phone=None, receive_reminders=True,
+    ),
+    "demo-tutor2@peerlingo.test": dict(
+        full_name="Sofia Ramirez", role=models.UserRole.tutor,
+        school="Summit High School", grade="12th Grade",
+        bio="Senior at Summit High. I speak conversational Spanish and love language education!",
+        goals=None, city="Summit", state="NJ", country=None,
+        date_of_birth=None, english_level=None, preferred_focus=None,
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level="conversational", availability_days="Tue,Thu", availability_times="Evening",
+        phone=None, receive_reminders=True,
+    ),
+    "demo-tutor3@peerlingo.test": dict(
+        full_name="Tyler Brooks", role=models.UserRole.tutor,
+        school="Westfield High School", grade="10th Grade",
+        bio="Sophomore at Westfield High. I took Spanish for 3 years and love meeting people from different cultures.",
+        goals=None, city="Westfield", state="NJ", country=None,
+        date_of_birth=None, english_level=None, preferred_focus=None,
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level="beginner", availability_days="Sat,Sun", availability_times="Morning",
+        phone=None, receive_reminders=True,
+    ),
+    "demo-student1@peerlingo.test": dict(
+        full_name="Maria Flores", role=models.UserRole.student,
+        school="Colegio San Agustín", grade="4th Grade",
+        bio=None, goals="Learn English to communicate better at school and make new friends.",
+        city="Lima", state=None, country="Peru",
+        date_of_birth=None, english_level="beginner", preferred_focus="reading",
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level=None, availability_days=None, availability_times=None,
+        phone=None, receive_reminders=True,
+    ),
+    "demo-student2@peerlingo.test": dict(
+        full_name="Carlos Mendez", role=models.UserRole.student,
+        school="Colegio Nacional", grade="9th Grade",
+        bio=None, goals="Improve my English for job opportunities and professional growth.",
+        city="Bogotá", state=None, country="Colombia",
+        date_of_birth=None, english_level="intermediate", preferred_focus="speaking",
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level=None, availability_days=None, availability_times=None,
+        phone=None, receive_reminders=True,
+    ),
+    "demo-student3@peerlingo.test": dict(
+        full_name="Isabella Torres", role=models.UserRole.student,
+        school="Prepa UNAM", grade="11th Grade",
+        bio=None, goals="Prepare for college applications in the US and improve my academic writing.",
+        city="Mexico City", state=None, country="Mexico",
+        date_of_birth=None, english_level="advanced", preferred_focus="writing",
+        preferred_tutor_gender=None, survey_completed=True,
+        spanish_level=None, availability_days=None, availability_times=None,
+        phone=None, receive_reminders=True,
+    ),
+}
+
+
+def _apply_dev_baseline(user: models.User, baseline: dict) -> None:
+    user.full_name = baseline["full_name"]
+    user.school = baseline.get("school")
+    user.grade = baseline.get("grade")
+    user.bio = baseline.get("bio")
+    user.goals = baseline.get("goals")
+    user.city = baseline.get("city")
+    user.state = baseline.get("state")
+    user.country = baseline.get("country")
+    user.date_of_birth = baseline.get("date_of_birth")
+    user.english_level = baseline.get("english_level")
+    user.preferred_focus = baseline.get("preferred_focus")
+    user.preferred_tutor_gender = baseline.get("preferred_tutor_gender")
+    user.survey_completed = baseline.get("survey_completed", False)
+    user.spanish_level = baseline.get("spanish_level")
+    user.availability_days = baseline.get("availability_days")
+    user.availability_times = baseline.get("availability_times")
+    user.phone = baseline.get("phone")
+    user.receive_reminders = baseline.get("receive_reminders", True)
+
+
 @router.post("/api/dev/ensure-accounts")
 def dev_ensure_accounts(db: Session = Depends(get_db)):
-    # Blocked in production (when VP_SECRET_KEY env var is set)
     if os.environ.get("VP_SECRET_KEY"):
         raise HTTPException(status_code=404, detail="Not found")
-    _DEV_ACCOUNTS = [
-        dict(email="admin@test.com", full_name="Alex Rivera", role=models.UserRole.admin, school="Virtual Peers HQ", grade=None),
-        dict(email="tutor@test.com", full_name="Jamie Chen", role=models.UserRole.tutor, school="New Jersey High School", grade="11th Grade"),
-        dict(email="student@test.com", full_name="Maria Flores", role=models.UserRole.student, school="Peru School", grade="4th Grade"),
-    ]
     result = {}
-    for acct in _DEV_ACCOUNTS:
-        user = db.query(models.User).filter(models.User.email == acct["email"]).first()
-        if user:
-            user.hashed_password = hash_password("testpass")
-            db.commit()
-            db.refresh(user)
-        else:
+    for email, baseline in _DEV_BASELINE.items():
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if not user:
             user = models.User(
-                email=acct["email"], full_name=acct["full_name"],
+                email=email, full_name=baseline["full_name"],
                 hashed_password=hash_password("testpass"),
-                role=acct["role"], school=acct["school"],
-                grade=acct["grade"], language="en",
+                role=baseline["role"], language="en",
             )
             db.add(user)
-            db.commit()
-            db.refresh(user)
-        result[user.role.value] = {
+            db.flush()
+            _apply_dev_baseline(user, baseline)
+        else:
+            user.hashed_password = hash_password("testpass")
+        db.commit()
+        db.refresh(user)
+        result[email] = {
             "token": create_access_token(user.id),
             "user": _user_out(user).model_dump(),
         }
     return result
 
-@router.post("/api/dev/reset-for-registration")
-def dev_reset_for_registration(role: str, db: Session = Depends(get_db)):
-    """Wipe survey/profile data for a test account so registration flow can be re-tested."""
+
+@router.post("/api/dev/reset-account")
+def dev_reset_account(email: str, db: Session = Depends(get_db)):
+    """Restore a demo account to its baseline profile (called automatically on logout)."""
     if os.environ.get("VP_SECRET_KEY"):
         raise HTTPException(status_code=404, detail="Not found")
-    email_map = {"student": "student@test.com", "tutor": "tutor@test.com"}
-    email = email_map.get(role)
-    if not email:
-        raise HTTPException(status_code=400, detail="role must be 'student' or 'tutor'")
+    if email not in _DEV_BASELINE:
+        raise HTTPException(status_code=400, detail="Not a demo account")
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Test account not found — run ensure-accounts first")
-    # Wipe all survey + profile fields that registration/survey flow fills in
-    user.survey_completed     = False
-    user.bio                  = None
-    user.goals                = None
-    user.school               = None
-    user.city                 = None
-    user.state                = None
-    user.country              = None
-    user.grade                = None
-    user.spanish_level        = None
-    user.availability_days    = None
-    user.availability_times   = None
-    user.date_of_birth        = None
-    user.english_level        = None
-    user.preferred_focus      = None
+        return {"ok": True}
+    baseline = _DEV_BASELINE[email]
+    _apply_dev_baseline(user, baseline)
+    if baseline["role"] == models.UserRole.student:
+        db.query(models.VPStudentProgress).filter(
+            models.VPStudentProgress.student_id == user.id
+        ).delete()
+        db.query(models.Assignment).filter(
+            models.Assignment.student_id == user.id
+        ).delete()
+        db.query(models.AssignmentCompletion).filter(
+            models.AssignmentCompletion.student_id == user.id
+        ).delete()
+        db.query(models.LessonProgress).filter(
+            models.LessonProgress.student_id == user.id
+        ).delete()
+    if baseline["role"] == models.UserRole.tutor:
+        db.query(models.Lesson).filter(models.Lesson.tutor_id == user.id).delete()
+        db.query(models.Meeting).filter(models.Meeting.tutor_id == user.id).delete()
+        db.query(models.Assignment).filter(models.Assignment.tutor_id == user.id).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/api/dev/reset-for-registration")
+def dev_reset_for_registration(email: Optional[str] = None, role: Optional[str] = None, db: Session = Depends(get_db)):
+    """Wipe survey/profile data for a demo account so registration flow can be re-tested."""
+    if os.environ.get("VP_SECRET_KEY"):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not email:
+        legacy_map = {"student": "demo-student1@peerlingo.test", "tutor": "demo-tutor1@peerlingo.test"}
+        email = legacy_map.get(role)
+    if not email or email not in _DEV_BASELINE or _DEV_BASELINE[email]["role"] == models.UserRole.admin:
+        raise HTTPException(status_code=400, detail="Provide a valid demo account email")
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Demo account not found — run ensure-accounts first")
+    user.survey_completed = False
+    user.bio = None
+    user.goals = None
+    user.school = None
+    user.city = None
+    user.state = None
+    user.country = None
+    user.grade = None
+    user.spanish_level = None
+    user.availability_days = None
+    user.availability_times = None
+    user.date_of_birth = None
+    user.english_level = None
+    user.preferred_focus = None
     user.preferred_tutor_gender = None
-    user.phone                  = None
-    user.receive_reminders      = True
-    if role == "student":
-        # Remove auto-assigned curriculum progress and assignments
+    user.phone = None
+    user.receive_reminders = True
+    if _DEV_BASELINE[email]["role"] == models.UserRole.student:
         db.query(models.VPStudentProgress).filter(
             models.VPStudentProgress.student_id == user.id
         ).delete()
@@ -1503,6 +1632,130 @@ def download_pdf(cl_id: int, current_user: models.User = Depends(get_current_use
     parts = cl.pdf_filename.split("_", 2)
     display_name = parts[2] if len(parts) == 3 else cl.pdf_filename
     return FileResponse(filepath, media_type="application/pdf", filename=display_name)
+
+
+# ── Admin VPCurriculumLesson read/edit ────────────────────────────────────────
+
+@router.get("/api/admin/curriculum/tracks")
+def admin_list_tracks(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    tracks = db.query(models.VPCurriculum).order_by(models.VPCurriculum.id).all()
+    result = []
+    for t in tracks:
+        count = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.curriculum_id == t.id).count()
+        result.append({"id": t.id, "level": t.level, "title": t.title, "description": t.description, "lesson_count": count})
+    return result
+
+@router.get("/api/admin/curriculum/tracks/{track_id}/lessons")
+def admin_list_track_lessons(track_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    lessons = db.query(models.VPCurriculumLesson).filter(
+        models.VPCurriculumLesson.curriculum_id == track_id
+    ).order_by(models.VPCurriculumLesson.lesson_number).all()
+    return [{"id": l.id, "lesson_number": l.lesson_number, "title": l.title} for l in lessons]
+
+@router.get("/api/admin/curriculum/lessons/{lesson_id}")
+def admin_get_lesson(lesson_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    hw = db.query(models.VPHomeworkAssignment).filter(models.VPHomeworkAssignment.lesson_id == lesson.id).first()
+    return {
+        "id": lesson.id, "lesson_number": lesson.lesson_number,
+        "title": lesson.title, "outline": lesson.outline, "outline_es": lesson.outline_es,
+        "vocabulary": hw.vocabulary if hw else "[]",
+        "expressions": hw.expressions if hw else "[]",
+    }
+
+@router.patch("/api/admin/curriculum/lessons/{lesson_id}")
+def admin_update_lesson(lesson_id: int, body: dict, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if "title" in body:
+        lesson.title = body["title"]
+    if "outline" in body:
+        lesson.outline = body["outline"]
+    db.commit(); db.refresh(lesson)
+    hw = db.query(models.VPHomeworkAssignment).filter(models.VPHomeworkAssignment.lesson_id == lesson.id).first()
+    return {
+        "id": lesson.id, "lesson_number": lesson.lesson_number,
+        "title": lesson.title, "outline": lesson.outline, "outline_es": lesson.outline_es,
+        "vocabulary": hw.vocabulary if hw else "[]",
+        "expressions": hw.expressions if hw else "[]",
+    }
+
+# ── Student curriculum assignment (admin assigns, tutor reads) ────────────────
+
+def _student_curriculum_items(student_id: int, db: Session):
+    rows = db.query(models.StudentCurriculum).filter(
+        models.StudentCurriculum.student_id == student_id
+    ).order_by(models.StudentCurriculum.order_index).all()
+    result = []
+    for sc in rows:
+        lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == sc.lesson_id).first()
+        if lesson:
+            snippet = lesson.outline[:120].rstrip() + '…' if len(lesson.outline) > 120 else lesson.outline
+            result.append({
+                "id": sc.id, "lesson_id": sc.lesson_id,
+                "lesson_number": lesson.lesson_number,
+                "title": lesson.title, "description": snippet,
+                "content": lesson.outline, "order_index": sc.order_index,
+            })
+    return result
+
+@router.get("/api/admin/students/{student_id}/curriculum")
+def admin_get_student_curriculum(student_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    return _student_curriculum_items(student_id, db)
+
+@router.post("/api/admin/students/{student_id}/curriculum")
+def admin_assign_curriculum(student_id: int, body: dict, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    lesson_id = body.get("lesson_id")
+    if not lesson_id:
+        raise HTTPException(status_code=400, detail="lesson_id required")
+    lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Curriculum lesson not found")
+    existing = db.query(models.StudentCurriculum).filter(
+        models.StudentCurriculum.student_id == student_id,
+        models.StudentCurriculum.lesson_id == lesson_id,
+    ).first()
+    if existing:
+        return {"ok": True, "id": existing.id}
+    count = db.query(models.StudentCurriculum).filter(
+        models.StudentCurriculum.student_id == student_id
+    ).count()
+    sc = models.StudentCurriculum(student_id=student_id, lesson_id=lesson_id, order_index=count)
+    db.add(sc); db.commit(); db.refresh(sc)
+    return {"ok": True, "id": sc.id}
+
+@router.delete("/api/admin/students/{student_id}/curriculum/{lesson_id}", status_code=204)
+def admin_remove_curriculum(student_id: int, lesson_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    sc = db.query(models.StudentCurriculum).filter(
+        models.StudentCurriculum.student_id == student_id,
+        models.StudentCurriculum.lesson_id == lesson_id,
+    ).first()
+    if sc:
+        db.delete(sc); db.commit()
+
+@router.get("/api/students/{student_id}/curriculum")
+def tutor_get_student_curriculum(student_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Tutor can view curriculum for their own paired students; admin can view any."""
+    if current_user.role == models.UserRole.tutor:
+        pairing = db.query(models.TutorStudentPairing).filter(
+            models.TutorStudentPairing.tutor_id == current_user.id,
+            models.TutorStudentPairing.student_id == student_id,
+        ).first()
+        if not pairing:
+            raise HTTPException(status_code=403, detail="Not your student")
+    elif current_user.role != models.UserRole.admin:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return _student_curriculum_items(student_id, db)
 
 
 # ── Assignments ───────────────────────────────────────────────────────────────

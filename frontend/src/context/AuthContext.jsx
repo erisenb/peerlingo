@@ -76,6 +76,12 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    const demoEmail = localStorage.getItem('vp_demo_email')
+    if (demoEmail) {
+      fetch(`${API_BASE}/api/dev/reset-account?email=${encodeURIComponent(demoEmail)}`, { method: 'POST' })
+        .catch(() => {})
+      localStorage.removeItem('vp_demo_email')
+    }
     localStorage.removeItem('vp_token')
     setToken(null)
     setUser(null)

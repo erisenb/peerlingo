@@ -640,6 +640,36 @@ function MyLessonsTab({ token }) {
   )
 }
 
+// ── Assign-lesson modal (just picks a due date) ───────────────────────────────
+
+function DueDateModal({ lesson, studentName, onSave, onClose, saving }) {
+  const [dueDate, setDueDate] = useState('')
+  return (
+    <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 16 }}>Assign Lesson</h2>
+        <div style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{lesson.title}</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>For {studentName}</div>
+          {lesson.description && (
+            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{lesson.description}</div>
+          )}
+        </div>
+        <label style={labelStyle}>Due Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+          style={{ ...inputStyle, width: 'auto', display: 'block' }} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+          <button onClick={() => onSave(dueDate || null)} disabled={saving}
+            style={{ ...saveBtnStyle(BLUE), opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Assigning…' : 'Assign →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── My Students tab ───────────────────────────────────────────────────────────
 
 function StudentAvatar({ student, size = 52 }) {
@@ -663,63 +693,230 @@ function StudentAvatar({ student, size = 52 }) {
 
 function MyStudentsTab({ token }) {
   const [students, setStudents] = useState([])
+  const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(null)
+  const [assigningLesson, setAssigningLesson] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [studentCurriculum, setStudentCurriculum] = useState([])
+  const [curriculumLoading, setCurriculumLoading] = useState(false)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/users/students`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(setStudents).finally(() => setLoading(false))
+    Promise.all([
+      fetch(`${API_BASE}/api/users/students`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${API_BASE}/api/assignments`,    { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([s, a]) => { setStudents(s); setAssignments(a) })
+      .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!selected) { setStudentCurriculum([]); return }
+    setCurriculumLoading(true)
+    fetch(`${API_BASE}/api/students/${selected.id}/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : []).then(setStudentCurriculum).finally(() => setCurriculumLoading(false))
+  }, [selected])
+
+  async function assignLesson(dueDate) {
+    setSaving(true)
+    try {
+      await fetch(`${API_BASE}/api/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: assigningLesson.title,
+          description: assigningLesson.description || '',
+          type: 'homework',
+          due_date: dueDate || null,
+          student_id: selected.id,
+          curriculum_id: assigningLesson.lesson_id,
+        }),
+      })
+      const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })
+      setAssignments(await res.json())
+      setAssigningLesson(null)
+    } finally { setSaving(false) }
+  }
+
+  async function deleteAssignment(id) {
+    await fetch(`${API_BASE}/api/assignments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    setAssignments(a => a.filter(x => x.id !== id))
+  }
 
   if (loading) return <Placeholder text="Loading students…" />
 
-  if (students.length === 0) return (
-    <div style={emptyBox}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-      <p style={{ color: '#6b7280', fontSize: 14 }}>
-        No students assigned yet. Ask your administrator to pair you with a student.
-      </p>
-    </div>
-  )
+  // ── Student list ──────────────────────────────────────────────────────────
+
+  if (!selected) {
+    if (students.length === 0) return (
+      <div style={emptyBox}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+        <p style={{ color: '#6b7280', fontSize: 14 }}>No students assigned yet. Ask your administrator to pair you with a student.</p>
+      </div>
+    )
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {students.map(s => (
+          <button key={s.id} onClick={() => setSelected(s)} style={{
+            background: '#fff', borderRadius: 16, padding: '18px 22px',
+            border: '1px solid rgba(0,128,128,0.25)', boxShadow: '0 2px 8px rgba(0,128,128,0.08)',
+            display: 'flex', alignItems: 'center', gap: 16,
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+            transition: 'box-shadow 0.15s, border-color 0.15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,128,128,0.55)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,128,128,0.15)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,128,128,0.25)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,128,128,0.08)' }}
+          >
+            <StudentAvatar student={s} size={54} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1e293b' }}>{s.full_name}</div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+                {[s.grade && `Grade ${s.grade}`, s.school, [s.city, s.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+              </div>
+              {s.english_level && (
+                <span style={{ ...badge('rgba(0,128,128,0.1)', '#008080'), display: 'inline-block', marginTop: 6, fontSize: 11 }}>
+                  {s.english_level.charAt(0).toUpperCase() + s.english_level.slice(1)} English
+                </span>
+              )}
+            </div>
+            <span style={{ color: BLUE, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>View →</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // ── Student profile ───────────────────────────────────────────────────────
+
+  const studentAssignments = assignments.filter(a => a.student_id === selected.id)
+  const assignedByCurriculumId = {}
+  studentAssignments.forEach(a => { if (a.curriculum_id) assignedByCurriculumId[a.curriculum_id] = a })
+  const nextUnassigned = studentCurriculum.find(item => !assignedByCurriculumId[item.lesson_id])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {students.map(s => (
-        <div key={s.id} style={{
-          background: '#fff', borderRadius: 16, padding: '22px 24px',
-          border: '1px solid rgba(0,128,128,0.25)', boxShadow: '0 2px 8px rgba(0,128,128,0.08)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-            <StudentAvatar student={s} size={60} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{s.full_name}</div>
-              <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-                {[s.grade && `Grade ${s.grade}`, s.school, s.email].filter(Boolean).join(' · ')}
-              </div>
+    <div>
+      <button onClick={() => setSelected(null)} style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        color: BLUE, fontWeight: 700, fontSize: 14, marginBottom: 20,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>← Back to Students</button>
+
+      {/* Profile card */}
+      <div style={{
+        background: '#fff', borderRadius: 18, padding: '24px 26px',
+        border: '1px solid rgba(0,128,128,0.25)', boxShadow: '0 2px 12px rgba(0,128,128,0.08)', marginBottom: 26,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
+          <StudentAvatar student={selected} size={68} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#1e293b' }}>{selected.full_name}</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 3 }}>
+              {[selected.grade && `Grade ${selected.grade}`, selected.school].filter(Boolean).join(' · ')}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+              {selected.english_level && (
+                <span style={badge('rgba(0,128,128,0.1)', '#008080')}>
+                  {selected.english_level.charAt(0).toUpperCase() + selected.english_level.slice(1)} English
+                </span>
+              )}
+              {selected.preferred_focus && <span style={badge('#f3f4f6', '#374151')}>Focus: {selected.preferred_focus}</span>}
+              {(selected.city || selected.country) && (
+                <span style={badge('#f0fdf4', '#15803d')}>
+                  📍 {[selected.city, selected.country].filter(Boolean).join(', ')}
+                </span>
+              )}
             </div>
           </div>
-          {(s.bio || s.goals) && (
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {s.bio && (
-                <div style={{ background: 'rgba(255,111,97,0.06)', borderRadius: 10, padding: '12px 16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#FF6F61', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>About</div>
-                  <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, margin: 0 }}>{s.bio}</p>
-                </div>
-              )}
-              {s.goals && (
-                <div style={{ background: 'rgba(0,128,128,0.05)', borderRadius: 10, padding: '12px 16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Goals</div>
-                  <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, margin: 0 }}>{s.goals}</p>
-                </div>
-              )}
-            </div>
-          )}
-          {!s.bio && !s.goals && (
-            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, fontStyle: 'italic' }}>
-              This student hasn't filled out their profile yet.
-            </p>
-          )}
         </div>
-      ))}
+        {selected.goals && (
+          <div style={{ marginTop: 18, background: 'rgba(0,128,128,0.05)', borderRadius: 12, padding: '14px 18px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Goals</div>
+            <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, margin: 0 }}>{selected.goals}</p>
+          </div>
+        )}
+        {selected.bio && (
+          <div style={{ marginTop: 12, background: 'rgba(255,111,97,0.06)', borderRadius: 12, padding: '14px 18px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#FF6F61', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>About</div>
+            <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, margin: 0 }}>{selected.bio}</p>
+          </div>
+        )}
+        {!selected.goals && !selected.bio && (
+          <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 14, fontStyle: 'italic' }}>
+            This student hasn't filled out their profile yet.
+          </p>
+        )}
+      </div>
+
+      {/* Curriculum & assignment status */}
+      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>Curriculum</h3>
+      {curriculumLoading ? (
+        <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading…</p>
+      ) : studentCurriculum.length === 0 ? (
+        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '16px 18px', border: '1.5px dashed #cbd5e1' }}>
+          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
+            No curriculum assigned yet — the admin will assign lessons for this student.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {studentCurriculum.map((item, i) => {
+            const rec = assignedByCurriculumId[item.lesson_id]
+            const isDone = !!rec
+            const isNext = item === nextUnassigned
+            const borderColor = isDone ? '#22c55e' : isNext ? '#008080' : 'rgba(0,128,128,0.18)'
+            const bg = isDone ? '#f0fdf4' : isNext ? 'rgba(0,128,128,0.04)' : '#fafafa'
+            return (
+              <div key={item.lesson_id} style={{
+                borderRadius: 12, padding: '14px 16px', border: `2px solid ${borderColor}`,
+                background: bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: isDone ? '#22c55e' : isNext ? '#008080' : '#cbd5e1', minWidth: 24 }}>
+                      {isDone ? '✅' : isNext ? '→' : `#${i + 1}`}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{item.title}</span>
+                    {isNext && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.1)', borderRadius: 20, padding: '2px 9px' }}>
+                        Next up
+                      </span>
+                    )}
+                  </div>
+                  {item.description && (
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3, marginLeft: 32 }}>
+                      {item.description.length > 100 ? item.description.slice(0, 100) + '…' : item.description}
+                    </div>
+                  )}
+                  {isDone && (
+                    <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4, marginLeft: 32 }}>
+                      Assigned{rec.due_date ? ` · Due ${rec.due_date}` : ' · No due date set'}
+                    </div>
+                  )}
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  {isDone ? (
+                    <button onClick={() => deleteAssignment(rec.id)} style={smallBtn('#dc2626')}>↩ Unassign</button>
+                  ) : isNext ? (
+                    <button onClick={() => setAssigningLesson(item)} style={{
+                      background: '#008080', color: '#fff', border: 'none', borderRadius: 8,
+                      padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}>📅 Assign</button>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {assigningLesson && (
+        <DueDateModal
+          lesson={assigningLesson}
+          studentName={selected.full_name}
+          onSave={assignLesson}
+          onClose={() => setAssigningLesson(null)}
+          saving={saving}
+        />
+      )}
     </div>
   )
 }
@@ -911,13 +1108,7 @@ function StatCard({ icon, label, value, color }) {
 export default function TutorDashboard() {
   const { user, token } = useAuth()
   const { t } = useLanguage()
-  const [tab, setTab] = useState('curriculum')
-  const [prefillCurriculum, setPrefillCurriculum] = useState(null)
-
-  function handleSelectForAssign(item) {
-    setPrefillCurriculum(item)
-    setTab('assign')
-  }
+  const [tab, setTab] = useState('students')
 
   return (
     <div style={{ minHeight: '100vh', background: '#F1F8F9', position: 'relative', zIndex: 1 }}>
@@ -933,19 +1124,15 @@ export default function TutorDashboard() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 24, borderBottom: '1px solid rgba(0,128,128,0.18)', flexWrap: 'wrap' }}>
-          <Tab id="curriculum" label="📚 Curriculum"                      active={tab === 'curriculum'} onClick={setTab} />
-          <Tab id="assign"     label={`📝 ${t('tutor.tab.assignments')}`} active={tab === 'assign'}     onClick={setTab} />
-          <Tab id="schedule"   label={`📅 ${t('tutor.tab.meetings')}`}    active={tab === 'schedule'}   onClick={setTab} />
           <Tab id="students"   label={`👥 ${t('tutor.tab.students')}`}    active={tab === 'students'}   onClick={setTab} />
+          <Tab id="schedule"   label={`📅 ${t('tutor.tab.meetings')}`}    active={tab === 'schedule'}   onClick={setTab} />
           <Tab id="messages"   label={`💬 ${t('tutor.tab.messages')}`}    active={tab === 'messages'}   onClick={setTab} />
           <Tab id="lessons"    label={`📖 ${t('tutor.tab.lessons')}`}     active={tab === 'lessons'}    onClick={setTab} />
           <Tab id="overview"   label="🏠 Overview"                        active={tab === 'overview'}   onClick={setTab} />
         </div>
 
-        {tab === 'curriculum' && <CurriculumTab token={token} onSelectForAssign={handleSelectForAssign} />}
-        {tab === 'assign'     && <AssignTab token={token} prefillCurriculum={prefillCurriculum} onClearPrefill={() => setPrefillCurriculum(null)} />}
-        {tab === 'schedule'   && <ScheduleTab token={token} />}
         {tab === 'students'   && <MyStudentsTab token={token} />}
+        {tab === 'schedule'   && <ScheduleTab token={token} />}
         {tab === 'messages'   && <MessagesTab token={token} user={user} />}
         {tab === 'lessons'    && <MyLessonsTab token={token} />}
         {tab === 'overview'   && <OverviewTab token={token} />}

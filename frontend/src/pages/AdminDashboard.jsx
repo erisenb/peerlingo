@@ -7,15 +7,6 @@ import { API_BASE } from '../api'
 const PURPLE = '#7c3aed'
 const LIGHT_PURPLE = '#ede9fe'
 
-function isYouTube(url) {
-  return url && (url.includes('youtube.com/watch') || url.includes('youtu.be/'))
-}
-
-function youtubeEmbedUrl(url) {
-  const m = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/)
-  return m ? `https://www.youtube.com/embed/${m[1]}` : url
-}
-
 function AdminTab({ id, label, active, onClick }) {
   return (
     <button onClick={() => onClick(id)} style={{
@@ -28,259 +19,308 @@ function AdminTab({ id, label, active, onClick }) {
   )
 }
 
-function CurriculumModal({ initial, onSave, onClose, saving }) {
-  const [form, setForm] = useState(
-    initial ?? { title: '', description: '', video_url: '', content: '' }
-  )
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+// ── Curriculum tab — 3-track drill-down ──────────────────────────────────────
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000, padding: 20,
-    }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{
-        background: '#fff', borderRadius: 20, padding: '32px 28px',
-        width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-      }}>
-        <h2 style={{ fontSize: 20, fontWeight: 900, color: '#1e293b', marginBottom: 4 }}>
-          {initial ? 'Edit Curriculum Item' : 'New Curriculum Item'}
-        </h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 24 }}>
-          Tutors will see this in their Curriculum Library to help them teach students.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field label="Title *">
-            <input value={form.title} onChange={e => set('title', e.target.value)}
-              placeholder='e.g. "Greetings & Introductions"' style={inputStyle} required />
-          </Field>
-          <Field label="Description">
-            <textarea value={form.description} onChange={e => set('description', e.target.value)}
-              placeholder="Brief overview of what this lesson covers…" rows={2}
-              style={{ ...inputStyle, resize: 'vertical' }} />
-          </Field>
-          <Field label="Video URL" hint="Paste a YouTube link or any video URL">
-            <input value={form.video_url} onChange={e => set('video_url', e.target.value)}
-              placeholder="https://youtube.com/watch?v=..." style={inputStyle} />
-          </Field>
-          <Field label="Lesson Content / Notes">
-            <textarea value={form.content} onChange={e => set('content', e.target.value)}
-              placeholder="Write lesson notes, scripts, activity instructions, discussion questions…"
-              rows={7} style={{ ...inputStyle, resize: 'vertical' }} />
-          </Field>
-        </div>
-
-        <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 16 }}>
-          After saving, you can attach a PDF worksheet from the lesson card.
-        </p>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-          <button onClick={() => onSave(form)}
-            disabled={!form.title.trim() || saving}
-            style={{ ...saveBtnStyle, opacity: !form.title.trim() || saving ? 0.6 : 1 }}>
-            {saving ? 'Saving…' : initial ? 'Save Changes' : 'Create'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+const TRACK_META = {
+  beginner:     { icon: '🌱', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', label: 'Beginner' },
+  intermediate: { icon: '📈', color: '#2563eb', bg: '#dbeafe', border: '#bfdbfe', label: 'Intermediate' },
+  advanced:     { icon: '🚀', color: PURPLE,    bg: LIGHT_PURPLE, border: '#ddd6fe', label: 'Advanced' },
 }
 
-function CurriculumCard({ item, onEdit, onDelete, token }) {
-  const [confirming, setConfirming] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef()
-
-  async function handlePdfUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    await fetch(`${API_BASE}/api/curriculum/${item.id}/pdf`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd,
-    })
-    setUploading(false)
-    window.location.reload()
-  }
-
-  return (
-    <div style={{
-      background: '#fff', borderRadius: 16, padding: '22px 24px',
-      border: '2px solid #e5e7eb',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>{item.title}</h3>
-
-          {item.description && (
-            <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5, marginBottom: 8 }}>
-              {item.description}
-            </p>
-          )}
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-            {item.video_url && (
-              <span style={badgeStyle('#dbeafe', '#2563eb')}>🎬 Video</span>
-            )}
-            {item.has_pdf && (
-              <a href={`${API_BASE}/api/curriculum/${item.id}/pdf`}
-                target="_blank" rel="noreferrer"
-                style={{ ...badgeStyle('#dcfce7', '#15803d'), textDecoration: 'none' }}>
-                📄 Download PDF
-              </a>
-            )}
-          </div>
-
-          {item.content && (
-            <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
-              {item.content.length > 160 ? item.content.slice(0, 160) + '…' : item.content}
-            </p>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-          <button onClick={() => onEdit(item)} style={smallBtn(PURPLE)}>✏️ Edit</button>
-          <button
-            onClick={() => fileRef.current.click()}
-            disabled={uploading}
-            style={smallBtn('#15803d')}
-          >{uploading ? 'Uploading…' : item.has_pdf ? '📄 Replace PDF' : '📎 Attach PDF'}</button>
-          <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handlePdfUpload} />
-          {confirming
-            ? <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => onDelete(item.id)} style={smallBtn('#dc2626')}>Delete</button>
-                <button onClick={() => setConfirming(false)} style={smallBtn('#6b7280')}>Cancel</button>
-              </div>
-            : <button onClick={() => setConfirming(true)} style={smallBtn('#dc2626')}>🗑 Delete</button>
-          }
-        </div>
-      </div>
-
-      {item.video_url && isYouTube(item.video_url) && (
-        <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
-          <iframe
-            src={youtubeEmbedUrl(item.video_url)}
-            width="100%" height="240"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ display: 'block' }}
-          />
-        </div>
-      )}
-      {item.video_url && !isYouTube(item.video_url) && (
-        <a href={item.video_url} target="_blank" rel="noreferrer"
-          style={{ display: 'inline-block', marginTop: 12, fontSize: 13, color: '#2563eb', fontWeight: 700 }}>
-          🎬 Watch Video →
-        </a>
-      )}
-    </div>
-  )
+function parseLessonSections(outline) {
+  const lines = (outline || '').split('\n')
+  const oIdx = lines.findIndex(l => l.includes('LESSON OVERVIEW'))
+  const tIdx = lines.findIndex(l => l.includes('TUTOR GUIDE'))
+  const nIdx = lines.findIndex(l => l.includes('TUTOR NOTE'))
+  const overview = oIdx !== -1
+    ? lines.slice(oIdx + 1, tIdx !== -1 ? tIdx : undefined).join('\n').trim()
+    : (outline || '')
+  const guide = tIdx !== -1
+    ? lines.slice(tIdx + 1, nIdx !== -1 ? nIdx : undefined).join('\n').trim()
+    : ''
+  const note = nIdx !== -1
+    ? lines.slice(nIdx).join('\n').replace(/^TUTOR NOTE:?\s*/m, '').trim()
+    : ''
+  return { overview, guide, note }
 }
 
 function CurriculumTab({ token }) {
-  const [curriculum, setCurriculum] = useState([])
+  const [tracks, setTracks] = useState([])
+  const [lessons, setLessons] = useState([])
+  const [lesson, setLesson] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState(null)
+  const [lessonsLoading, setLessonsLoading] = useState(false)
+  const [lessonLoading, setLessonLoading] = useState(false)
+  const [view, setView] = useState('tracks') // 'tracks' | 'lessons' | 'lesson'
+  const [selectedTrack, setSelectedTrack] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', outline: '' })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { fetchCurriculum() }, [])
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/curriculum/tracks`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(setTracks).finally(() => setLoading(false))
+  }, [])
 
-  async function fetchCurriculum() {
-    setLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/api/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
-      setCurriculum(await res.json())
-    } finally {
-      setLoading(false)
-    }
+  async function openTrack(track) {
+    setSelectedTrack(track)
+    setView('lessons')
+    setLessonsLoading(true)
+    const res = await fetch(`${API_BASE}/api/admin/curriculum/tracks/${track.id}/lessons`, { headers: { Authorization: `Bearer ${token}` } })
+    setLessons(await res.json())
+    setLessonsLoading(false)
   }
 
-  async function saveCurriculum(form) {
+  async function openLesson(summary) {
+    setView('lesson')
+    setLessonLoading(true)
+    setLesson(null)
+    setEditMode(false)
+    const res = await fetch(`${API_BASE}/api/admin/curriculum/lessons/${summary.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    setLesson(data)
+    setEditForm({ title: data.title, outline: data.outline || '' })
+    setLessonLoading(false)
+  }
+
+  async function saveLesson() {
     setSaving(true)
     try {
-      const url = editing ? `${API_BASE}/api/curriculum/${editing.id}` : `${API_BASE}/api/curriculum`
-      const method = editing ? 'PATCH' : 'POST'
-      await fetch(url, {
-        method,
+      const res = await fetch(`${API_BASE}/api/admin/curriculum/lessons/${lesson.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(editForm),
       })
-      await fetchCurriculum()
-      closeModal()
-    } finally {
-      setSaving(false)
-    }
+      const updated = await res.json()
+      setLesson(updated)
+      setEditForm({ title: updated.title, outline: updated.outline || '' })
+      setLessons(ls => ls.map(l => l.id === updated.id ? { ...l, title: updated.title } : l))
+      setEditMode(false)
+    } finally { setSaving(false) }
   }
 
-  async function deleteCurriculum(id) {
-    await fetch(`${API_BASE}/api/curriculum/${id}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-    })
-    setCurriculum(c => c.filter(x => x.id !== id))
+  // ── Track list ──────────────────────────────────────────────────────────────
+  if (view === 'tracks') {
+    if (loading) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Loading…</p>
+    if (tracks.length === 0) return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 16, border: '2px dashed #ddd6fe' }}>
+        <div style={{ fontSize: 52, marginBottom: 12 }}>📚</div>
+        <p style={{ color: '#6b7280', fontSize: 14 }}>No curriculum tracks found. Run the seed to populate them.</p>
+      </div>
+    )
+    return (
+      <div>
+        <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
+          Three curriculum tracks — click one to view and edit its lessons.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {tracks.map(track => {
+            const m = TRACK_META[track.level] || TRACK_META.beginner
+            return (
+              <button key={track.id} onClick={() => openTrack(track)} style={{
+                background: m.bg, border: `2px solid ${m.border}`, borderRadius: 18,
+                padding: '22px 26px', textAlign: 'left', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 18,
+                transition: 'box-shadow 0.15s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.boxShadow = `0 4px 20px ${m.border}`}
+                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+              >
+                <div style={{ fontSize: 40, flexShrink: 0 }}>{m.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: '#1e293b', marginBottom: 4 }}>{track.title}</div>
+                  {track.description && (
+                    <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                      {track.description.length > 100 ? track.description.slice(0, 100) + '…' : track.description}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ background: m.color, color: '#fff', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>
+                      {track.lesson_count} lesson{track.lesson_count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+                <span style={{ color: m.color, fontWeight: 800, fontSize: 20, flexShrink: 0 }}>→</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
-  function openNew() { setEditing(null); setShowModal(true) }
-  function openEdit(item) { setEditing(item); setShowModal(true) }
-  function closeModal() { setShowModal(false); setEditing(null) }
+  // ── Lesson list ─────────────────────────────────────────────────────────────
+  if (view === 'lessons') {
+    const m = TRACK_META[selectedTrack?.level] || TRACK_META.beginner
+    return (
+      <div>
+        <button onClick={() => setView('tracks')} style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          color: m.color, fontWeight: 700, fontSize: 14, marginBottom: 18,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>← All Tracks</button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, padding: '14px 18px', background: m.bg, borderRadius: 14, border: `1.5px solid ${m.border}` }}>
+          <span style={{ fontSize: 28 }}>{m.icon}</span>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#1e293b' }}>{selectedTrack?.title}</div>
+            <div style={{ fontSize: 12, color: m.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{m.label}</div>
+          </div>
+        </div>
+
+        {lessonsLoading ? (
+          <p style={{ color: '#9ca3af', textAlign: 'center', padding: 32 }}>Loading lessons…</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {lessons.map(l => (
+              <div key={l.id} style={{
+                background: '#fff', borderRadius: 12, padding: '16px 20px',
+                border: `1.5px solid ${m.border}`,
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                  background: m.bg, border: `2px solid ${m.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 800, color: m.color,
+                }}>{l.lesson_number}</div>
+                <div style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{l.title}</div>
+                <button onClick={() => openLesson(l)} style={{
+                  background: m.color, color: '#fff', border: 'none', borderRadius: 8,
+                  padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                }}>View Lesson →</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Lesson detail ───────────────────────────────────────────────────────────
+  const m = TRACK_META[selectedTrack?.level] || TRACK_META.beginner
+
+  if (lessonLoading || !lesson) return (
+    <div>
+      <button onClick={() => setView('lessons')} style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        color: m.color, fontWeight: 700, fontSize: 14, marginBottom: 18,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>← Back to Lessons</button>
+      <p style={{ color: '#9ca3af', textAlign: 'center', padding: 32 }}>Loading…</p>
+    </div>
+  )
+
+  const vocab = (() => { try { return JSON.parse(lesson.vocabulary || '[]') } catch { return [] } })()
+  const expressions = (() => { try { return JSON.parse(lesson.expressions || '[]') } catch { return [] } })()
+  const { overview, guide, note } = parseLessonSections(lesson.outline)
+
+  if (editMode) {
+    return (
+      <div>
+        <button onClick={() => setEditMode(false)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          color: m.color, fontWeight: 700, fontSize: 14, marginBottom: 18,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>← Cancel Edit</button>
+
+        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 20 }}>
+          Edit Lesson #{lesson.lesson_number}
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Title</label>
+            <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Lesson Outline</label>
+            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
+              Use section headers LESSON OVERVIEW, TUTOR GUIDE, and TUTOR NOTE: to structure the content.
+            </p>
+            <textarea value={editForm.outline} onChange={e => setEditForm(f => ({ ...f, outline: e.target.value }))}
+              rows={22} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+          <button onClick={() => setEditMode(false)} style={cancelBtnStyle}>Cancel</button>
+          <button onClick={saveLesson} disabled={!editForm.title.trim() || saving}
+            style={{ ...saveBtnStyle, opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <span style={{ background: LIGHT_PURPLE, color: PURPLE, borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700 }}>
-          {curriculum.length} lesson{curriculum.length !== 1 ? 's' : ''}
-        </span>
-        <button onClick={openNew} style={createBtnStyle}>+ New Curriculum Item</button>
+      <button onClick={() => setView('lessons')} style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        color: m.color, fontWeight: 700, fontSize: 14, marginBottom: 18,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>← Back to Lessons</button>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: m.color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+            {m.icon} {m.label} · Lesson {lesson.lesson_number}
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', margin: 0 }}>{lesson.title}</h2>
+        </div>
+        <button onClick={() => setEditMode(true)} style={{ ...smallBtn(PURPLE), flexShrink: 0 }}>✏️ Edit</button>
       </div>
 
-      {loading ? (
-        <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Loading…</p>
-      ) : curriculum.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '60px 20px',
-          background: '#fff', borderRadius: 16, border: '2px dashed #ddd6fe',
-        }}>
-          <div style={{ fontSize: 52, marginBottom: 12 }}>📚</div>
-          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#374151', marginBottom: 8 }}>No curriculum yet</h3>
-          <p style={{ fontSize: 14, color: '#9ca3af', marginBottom: 20 }}>
-            Create your first lesson — tutors will see it in their library.
-          </p>
-          <button onClick={openNew} style={createBtnStyle}>+ Create First Lesson</button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {curriculum.map(item => (
-            <CurriculumCard key={item.id} item={item} onEdit={openEdit} onDelete={deleteCurriculum} token={token} />
-          ))}
+      {overview && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Lesson Overview</div>
+          <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#f8fafc', borderRadius: 12, padding: '16px 18px' }}>{overview}</div>
         </div>
       )}
 
-      <div style={{
-        marginTop: 32, background: `linear-gradient(135deg, ${PURPLE}, #6d28d9)`,
-        borderRadius: 16, padding: '22px 28px', color: '#fff',
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>🌎 How Curriculum Works</div>
-        <p style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.8 }}>
-          1. Create a lesson with notes, a video link, and a PDF worksheet.<br />
-          2. Tutors in New Jersey see the lesson in their Curriculum Library.<br />
-          3. They use it to teach their student in Peru during virtual meetings.<br />
-          4. After the meeting, they assign homework or quizzes from the lesson.
-        </p>
-      </div>
+      {guide && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Tutor Guide</div>
+          <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#f8fafc', borderRadius: 12, padding: '16px 18px' }}>{guide}</div>
+        </div>
+      )}
 
-      {showModal && (
-        <CurriculumModal initial={editing} onSave={saveCurriculum} onClose={closeModal} saving={saving} />
+      {note && (
+        <div style={{ marginBottom: 22, padding: '14px 18px', background: 'rgba(255,111,97,0.06)', borderLeft: '3px solid #FF6F61', borderRadius: '0 10px 10px 0' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#FF6F61' }}>Tutor Note: </span>
+          <span style={{ fontSize: 13, color: '#374151' }}>{note}</span>
+        </div>
+      )}
+
+      {vocab.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Vocabulary</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8 }}>
+            {vocab.map((v, i) => (
+              <div key={i} style={{ padding: '10px 14px', background: 'rgba(160,211,232,0.12)', border: '1px solid rgba(160,211,232,0.3)', borderRadius: 10 }}>
+                <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 14 }}>{v.word}</span>
+                <span style={{ color: '#94a3b8', fontSize: 13 }}> — </span>
+                <span style={{ color: '#475569', fontSize: 13 }}>{v.definition}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {expressions.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Expressions</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {expressions.map((e, i) => (
+              <div key={i} style={{ padding: '10px 14px', background: 'rgba(0,128,128,0.04)', border: '1px solid rgba(0,128,128,0.1)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, flexShrink: 0 }}>"{e.expression}"</span>
+                <span style={{ color: '#94a3b8', fontSize: 13 }}>→</span>
+                <span style={{ color: '#475569', fontSize: 13 }}>{e.meaning}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -460,6 +500,120 @@ function PairingCard({ pairing, onDelete }) {
   )
 }
 
+// ── Curriculum-assignment modal (admin picks lessons for a student) ────────────
+
+function CurriculumAssignModal({ student, token, onClose }) {
+  const [tracksWithLessons, setTracksWithLessons] = useState([])
+  const [assignedIds, setAssignedIds] = useState(new Set())
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState(null)
+
+  useEffect(() => {
+    const h = { Authorization: `Bearer ${token}` }
+    Promise.all([
+      fetch(`${API_BASE}/api/admin/curriculum/tracks`, { headers: h }).then(r => r.json()),
+      fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum`, { headers: h }).then(r => r.json()),
+    ]).then(async ([tracks, assigned]) => {
+      const withLessons = await Promise.all(
+        tracks.map(t =>
+          fetch(`${API_BASE}/api/admin/curriculum/tracks/${t.id}/lessons`, { headers: h })
+            .then(r => r.json()).then(ls => ({ ...t, lessons: ls }))
+        )
+      )
+      setTracksWithLessons(withLessons)
+      setAssignedIds(new Set(assigned.map(a => a.lesson_id)))
+    }).finally(() => setLoading(false))
+  }, [])
+
+  async function toggle(lessonId) {
+    setToggling(lessonId)
+    try {
+      if (assignedIds.has(lessonId)) {
+        await fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum/${lessonId}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+        })
+        setAssignedIds(s => { const n = new Set(s); n.delete(lessonId); return n })
+      } else {
+        await fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ lesson_id: lessonId }),
+        })
+        setAssignedIds(s => new Set([...s, lessonId]))
+      }
+    } finally { setToggling(null) }
+  }
+
+  const totalLessons = tracksWithLessons.reduce((sum, t) => sum + (t.lessons?.length || 0), 0)
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <h2 style={{ fontSize: 19, fontWeight: 900, color: '#1e293b', marginBottom: 4 }}>
+          📚 Curriculum for {student.full_name}
+        </h2>
+        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+          Select which lessons this student will follow. Their tutor will see these in the student profile.
+        </p>
+
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#9ca3af', padding: 32 }}>Loading…</p>
+        ) : totalLessons === 0 ? (
+          <p style={{ color: '#6b7280', textAlign: 'center', padding: 24, fontStyle: 'italic' }}>
+            No curriculum lessons found.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {tracksWithLessons.map(track => {
+              const tm = TRACK_META[track.level] || TRACK_META.beginner
+              if (!track.lessons?.length) return null
+              return (
+                <div key={track.id}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: tm.color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                    {tm.icon} {tm.label}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {track.lessons.map(item => {
+                      const assigned = assignedIds.has(item.id)
+                      const busy = toggling === item.id
+                      return (
+                        <div key={item.id} style={{
+                          borderRadius: 10, padding: '11px 14px',
+                          border: `2px solid ${assigned ? tm.color : '#e5e7eb'}`,
+                          background: assigned ? tm.bg : '#fafafa',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: tm.color, minWidth: 20 }}>#{item.lesson_number}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{item.title}</span>
+                          </div>
+                          <button onClick={() => toggle(item.id)} disabled={busy} style={{
+                            background: assigned ? '#dc2626' : tm.color, color: '#fff',
+                            border: 'none', borderRadius: 7, padding: '6px 12px',
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            opacity: busy ? 0.6 : 1, flexShrink: 0,
+                          }}>
+                            {busy ? '…' : assigned ? '✕ Remove' : '+ Add'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <div style={{ marginTop: 24, textAlign: 'right' }}>
+          <button onClick={onClose} style={cancelBtnStyle}>Done</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Users tab ─────────────────────────────────────────────────────────────────
 
 function UsersTab({ token }) {
@@ -467,6 +621,7 @@ function UsersTab({ token }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [curriculumStudent, setCurriculumStudent] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -484,7 +639,7 @@ function UsersTab({ token }) {
 
   if (loading) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Loading…</p>
 
-  function UserCard({ user: u, roleColor, roleBg }) {
+  function UserCard({ user: u, roleColor, roleBg, isStudent }) {
     return (
       <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '2px solid #e5e7eb', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -498,12 +653,15 @@ function UsersTab({ token }) {
             </div>
           </div>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {isStudent && (
+            <button onClick={() => setCurriculumStudent(u)} style={smallBtn(PURPLE)}>📚 Curriculum</button>
+          )}
           {confirmDelete === u.id
-            ? <div style={{ display: 'flex', gap: 6 }}>
+            ? <>
                 <button onClick={() => deleteUser(u.id)} style={smallBtn('#dc2626')}>Delete</button>
                 <button onClick={() => setConfirmDelete(null)} style={smallBtn('#6b7280')}>Cancel</button>
-              </div>
+              </>
             : <button onClick={() => setConfirmDelete(u.id)} style={smallBtn('#dc2626')}>🗑 Delete</button>
           }
         </div>
@@ -526,7 +684,7 @@ function UsersTab({ token }) {
         <div style={{ marginBottom: 28 }}>
           <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2563eb', marginBottom: 12 }}>🎓 Tutors</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {tutors.map(u => <UserCard key={u.id} user={u} roleColor="#2563eb" roleBg="#dbeafe" />)}
+            {tutors.map(u => <UserCard key={u.id} user={u} roleColor="#2563eb" roleBg="#dbeafe" isStudent={false} />)}
           </div>
         </div>
       )}
@@ -535,7 +693,7 @@ function UsersTab({ token }) {
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 800, color: '#d97706', marginBottom: 12 }}>⭐ Students</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {students.map(u => <UserCard key={u.id} user={u} roleColor="#d97706" roleBg="#fef3c7" />)}
+            {students.map(u => <UserCard key={u.id} user={u} roleColor="#d97706" roleBg="#fef3c7" isStudent={true} />)}
           </div>
         </div>
       )}
@@ -545,6 +703,14 @@ function UsersTab({ token }) {
           <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
           <p style={{ color: '#6b7280', fontSize: 14 }}>No users yet. Accounts appear here once people register.</p>
         </div>
+      )}
+
+      {curriculumStudent && (
+        <CurriculumAssignModal
+          student={curriculumStudent}
+          token={token}
+          onClose={() => setCurriculumStudent(null)}
+        />
       )}
     </div>
   )

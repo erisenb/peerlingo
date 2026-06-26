@@ -206,3 +206,13 @@ class VPStudentProgress(Base):
     current_lesson_number = Column(Integer, default=1, nullable=False)
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+
+
+class StudentCurriculum(Base):
+    __tablename__ = "vp_student_curriculum"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("vp_curriculum_lessons.id"), nullable=False)
+    order_index = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

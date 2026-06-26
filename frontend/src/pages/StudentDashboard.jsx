@@ -673,7 +673,8 @@ function ChatThread({ token, user, contact, subtitle }) {
 function MensajesTab({ token, user }) {
   const [admin, setAdmin] = useState(null)
   const [tutor, setTutor] = useState(null)
-  const [activeThread, setActiveThread] = useState('admin')
+  const [previews, setPreviews] = useState({})
+  const [activeThread, setActiveThread] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -685,7 +686,19 @@ function MensajesTab({ token, user }) {
     ]).then(([a, t]) => {
       setAdmin(a)
       setTutor(t)
-      setActiveThread(t ? 'tutor' : 'admin')
+      const contacts = [a, t].filter(Boolean)
+      Promise.all(
+        contacts.map(c =>
+          fetch(`${API_BASE}/api/chat/${c.id}`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : [])
+            .then(msgs => ({ id: c.id, last: msgs[msgs.length - 1] || null }))
+            .catch(() => ({ id: c.id, last: null }))
+        )
+      ).then(results => {
+        const p = {}
+        results.forEach(r => { p[r.id] = r.last })
+        setPreviews(p)
+      })
     }).finally(() => setLoading(false))
   }, [])
 
@@ -697,25 +710,67 @@ function MensajesTab({ token, user }) {
     ...(tutor ? [{ key: 'tutor', contact: tutor, subtitle: `${tutor.school || 'New Jersey'} · Tu tutor` }] : []),
   ]
 
-  const active = threads.find(t => t.key === activeThread) || threads[0]
+  if (activeThread) {
+    const active = threads.find(t => t.key === activeThread)
+    return (
+      <div>
+        <button onClick={() => setActiveThread(null)} style={{
+          background: 'none', border: 'none', color: AMBER, fontWeight: 700,
+          fontSize: 15, cursor: 'pointer', marginBottom: 14,
+          display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+        }}>
+          ‹ Mensajes
+        </button>
+        <ChatThread key={active.key} token={token} user={user} contact={active.contact} subtitle={active.subtitle} />
+      </div>
+    )
+  }
 
   return (
     <div>
-      {threads.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {threads.map(t => (
-            <button key={t.key} onClick={() => setActiveThread(t.key)} style={{
-              padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              background: activeThread === t.key ? AMBER : 'rgba(0,128,128,0.07)',
-              color: activeThread === t.key ? '#fff' : '#008080',
-              border: activeThread === t.key ? 'none' : '1px solid rgba(0,128,128,0.25)',
-            }}>
-              {t.contact.full_name.split(' ')[0]}
+      <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', marginBottom: 16 }}>Mensajes</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 16, border: '1px solid rgba(0,128,128,0.18)', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,128,128,0.07)' }}>
+        {threads.map((t, i) => {
+          const last = previews[t.contact.id]
+          const isMe = last?.sender_id === user.id
+          const preview = last ? `${isMe ? 'Tú: ' : ''}${last.content}` : 'Sin mensajes todavía'
+          const time = last
+            ? new Date(last.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+            : ''
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveThread(t.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '14px 18px', background: 'none', border: 'none',
+                cursor: 'pointer', textAlign: 'left', width: '100%',
+                borderTop: i > 0 ? '1px solid rgba(0,128,128,0.08)' : 'none',
+              }}
+            >
+              <div style={{
+                width: 50, height: 50, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(255,111,97,0.12)', border: `2px solid ${AMBER}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 900, color: AMBER,
+              }}>
+                {t.contact.full_name[0].toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#1e293b' }}>{t.contact.full_name}</span>
+                  {time && <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, marginLeft: 8 }}>{time}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>{t.subtitle}</div>
+                <div style={{ fontSize: 13, color: last ? '#475569' : '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {preview}
+                </div>
+              </div>
+              <span style={{ color: '#d1d5db', fontSize: 20, flexShrink: 0 }}>›</span>
             </button>
-          ))}
-        </div>
-      )}
-      <ChatThread key={active.key} token={token} user={user} contact={active.contact} subtitle={active.subtitle} />
+          )
+        })}
+      </div>
     </div>
   )
 }

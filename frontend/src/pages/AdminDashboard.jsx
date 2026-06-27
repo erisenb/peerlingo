@@ -56,6 +56,9 @@ function CurriculumTab({ token }) {
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', outline: '' })
   const [saving, setSaving] = useState(false)
+  const [showSlidesModal, setShowSlidesModal] = useState(false)
+  const [slidesPrompt, setSlidesPrompt] = useState('')
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     fetch(`${API_BASE}/api/admin/curriculum/tracks`, { headers: { Authorization: `Bearer ${token}` } })
@@ -97,6 +100,21 @@ function CurriculumTab({ token }) {
       setLessons(ls => ls.map(l => l.id === updated.id ? { ...l, title: updated.title } : l))
       setEditMode(false)
     } finally { setSaving(false) }
+  }
+
+  async function generateSlides() {
+    setGenerating(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/generate/slides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ prompt: slidesPrompt, lesson_id: lesson?.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.detail || 'Failed to generate slides'); return }
+      setLesson(l => ({ ...l, slides_url: data.slides_url }))
+      setShowSlidesModal(false)
+    } finally { setGenerating(false) }
   }
 
   // ── Track list ──────────────────────────────────────────────────────────────
@@ -262,15 +280,60 @@ function CurriculumTab({ token }) {
         display: 'flex', alignItems: 'center', gap: 6,
       }}>← Back to Lessons</button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: lesson.slides_url ? 12 : 24 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: m.color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
             {m.icon} {m.label} · Lesson {lesson.lesson_number}
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', margin: 0 }}>{lesson.title}</h2>
         </div>
-        <button onClick={() => setEditMode(true)} style={{ ...smallBtn(PURPLE), flexShrink: 0 }}>✏️ Edit</button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button onClick={() => { setSlidesPrompt(lesson.title); setShowSlidesModal(true) }} style={{ ...smallBtn('#ea580c'), flexShrink: 0 }}>✨ Slides</button>
+          <button onClick={() => setEditMode(true)} style={{ ...smallBtn(PURPLE), flexShrink: 0 }}>✏️ Edit</button>
+        </div>
       </div>
+
+      {lesson.slides_url && (
+        <div style={{ marginBottom: 24, padding: '12px 18px', background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>🎨</span>
+          <a href={lesson.slides_url} target="_blank" rel="noreferrer"
+            style={{ color: '#ea580c', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+            View Google Slides →
+          </a>
+          <button onClick={() => { setSlidesPrompt(lesson.title); setShowSlidesModal(true) }}
+            style={{ marginLeft: 'auto', background: 'none', border: '1.5px solid #fed7aa', borderRadius: 8, padding: '4px 12px', fontSize: 12, color: '#ea580c', cursor: 'pointer', fontWeight: 600 }}>
+            Regenerate
+          </button>
+        </div>
+      )}
+
+      {showSlidesModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 8 }}>✨ Generate Google Slides</h3>
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+              Describe what the slides should cover. Claude will write the content and create the presentation automatically.
+            </p>
+            <textarea
+              value={slidesPrompt}
+              onChange={e => setSlidesPrompt(e.target.value)}
+              rows={5}
+              placeholder={`e.g. "Greetings and introductions for beginner English learners — include vocabulary, common phrases, and a dialogue example"`}
+              style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowSlidesModal(false)} disabled={generating}
+                style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#475569' }}>
+                Cancel
+              </button>
+              <button onClick={generateSlides} disabled={!slidesPrompt.trim() || generating}
+                style={{ padding: '10px 22px', background: generating ? '#94a3b8' : '#ea580c', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: generating ? 'default' : 'pointer' }}>
+                {generating ? '⏳ Generating…' : '✨ Generate Slides'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {overview && (
         <div style={{ marginBottom: 22 }}>

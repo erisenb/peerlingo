@@ -62,6 +62,11 @@ with database.engine.connect() as _c:
         _c.commit()
     except Exception:
         pass
+    try:
+        _c.execute(text("ALTER TABLE vp_curriculum_lessons ADD COLUMN slides_url VARCHAR"))
+        _c.commit()
+    except Exception:
+        pass
     # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
     try:
         _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
@@ -1666,6 +1671,7 @@ def admin_get_lesson(lesson_id: int, current_user: models.User = Depends(get_cur
         "title": lesson.title, "outline": lesson.outline, "outline_es": lesson.outline_es,
         "vocabulary": hw.vocabulary if hw else "[]",
         "expressions": hw.expressions if hw else "[]",
+        "slides_url": lesson.slides_url,
     }
 
 @router.patch("/api/admin/curriculum/lessons/{lesson_id}")
@@ -1685,7 +1691,29 @@ def admin_update_lesson(lesson_id: int, body: dict, current_user: models.User = 
         "title": lesson.title, "outline": lesson.outline, "outline_es": lesson.outline_es,
         "vocabulary": hw.vocabulary if hw else "[]",
         "expressions": hw.expressions if hw else "[]",
+        "slides_url": lesson.slides_url,
     }
+
+@router.post("/api/admin/generate/slides")
+async def generate_slides(body: dict, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    prompt = body.get("prompt", "").strip()
+    lesson_id = body.get("lesson_id")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+    try:
+        from slide_generator import create_slides
+        slides_url = create_slides(prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Slides generation failed: {str(e)}")
+    if lesson_id:
+        lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
+        if lesson:
+            lesson.slides_url = slides_url
+            db.commit()
+    return {"slides_url": slides_url}
 
 # ── Student curriculum assignment (admin assigns, tutor reads) ────────────────
 

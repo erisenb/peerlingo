@@ -742,6 +742,26 @@ function MyStudentsTab({ token }) {
     setAssignments(a => a.filter(x => x.id !== id))
   }
 
+  async function quickAssign(item, type, label) {
+    setSaving(true)
+    try {
+      await fetch(`${API_BASE}/api/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: `${label}: ${item.title}`,
+          description: item.description || '',
+          type,
+          due_date: null,
+          student_id: selected.id,
+          curriculum_id: null,
+        }),
+      })
+      const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })
+      setAssignments(await res.json())
+    } finally { setSaving(false) }
+  }
+
   if (loading) return <Placeholder text="Loading students…" />
 
   // ── Student list ──────────────────────────────────────────────────────────
@@ -892,15 +912,17 @@ function MyStudentsTab({ token }) {
                     </div>
                   )}
                 </div>
-                <div style={{ flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
                   {isDone ? (
                     <button onClick={() => deleteAssignment(rec.id)} style={smallBtn('#dc2626')}>↩ Unassign</button>
                   ) : isNext ? (
                     <button onClick={() => setAssigningLesson(item)} style={{
                       background: '#008080', color: '#fff', border: 'none', borderRadius: 8,
-                      padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                     }}>📅 Assign</button>
                   ) : null}
+                  <button onClick={() => quickAssign(item, 'practice', '📇 Flashcards')} disabled={saving} style={smallBtn('#6366f1')}>📇 Flashcards</button>
+                  <button onClick={() => quickAssign(item, 'quiz', '🧪 Quiz')} disabled={saving} style={smallBtn('#FF6F61')}>🧪 Quiz</button>
                 </div>
               </div>
             )

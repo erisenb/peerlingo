@@ -910,6 +910,135 @@ function HorarioTab({ meetings }) {
   )
 }
 
+// ── Flashcard & Quiz helpers ──────────────────────────────────────────────────
+
+function FlashcardDeck({ vocab, expressions }) {
+  const cards = [
+    ...vocab.map(v => ({ front: v.word, back: v.definition, label: 'Palabra' })),
+    ...expressions.map(e => ({ front: `"${e.expression}"`, back: e.meaning, label: 'Expresión' })),
+  ]
+  const [idx, setIdx] = useState(0)
+  const [flipped, setFlipped] = useState(false)
+
+  if (cards.length === 0) return null
+
+  const card = cards[idx]
+  function go(dir) { setIdx(i => (i + dir + cards.length) % cards.length); setFlipped(false) }
+
+  return (
+    <div>
+      <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FF6F61', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px' }}>
+        📇 Flashcards — toca para voltear
+      </h4>
+      <div onClick={() => setFlipped(f => !f)} style={{ perspective: '1000px', cursor: 'pointer', marginBottom: 12 }}>
+        <div style={{
+          position: 'relative', width: '100%', height: 160,
+          transformStyle: 'preserve-3d',
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          transition: 'transform 0.4s ease',
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
+            background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
+            borderRadius: 14, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', padding: '16px 20px',
+          }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{card.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', textAlign: 'center', lineHeight: 1.4 }}>{card.front}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 10 }}>Toca para ver →</div>
+          </div>
+          <div style={{
+            position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+            background: '#fff', border: '2px solid #FF6F61',
+            borderRadius: 14, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', padding: '16px 20px',
+          }}>
+            <div style={{ fontSize: 11, color: '#FF6F61', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Definición</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', textAlign: 'center', lineHeight: 1.5 }}>{card.back}</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={() => go(-1)} style={{ background: 'rgba(255,111,97,0.1)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#FF6F61', fontWeight: 700, fontSize: 13 }}>‹ Anterior</button>
+        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>{idx + 1} / {cards.length}</span>
+        <button onClick={() => go(1)} style={{ background: 'rgba(255,111,97,0.1)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#FF6F61', fontWeight: 700, fontSize: 13 }}>Siguiente ›</button>
+      </div>
+    </div>
+  )
+}
+
+function buildQuestion(vocab, expressions) {
+  const all = [
+    ...vocab.map(v => ({ term: v.word, def: v.definition })),
+    ...expressions.map(e => ({ term: e.expression, def: e.meaning })),
+  ]
+  if (all.length < 2) return null
+  const shuffled = [...all].sort(() => Math.random() - 0.5)
+  const correct = shuffled[0]
+  const options = [correct.def, ...shuffled.slice(1, 4).map(x => x.def)].sort(() => Math.random() - 0.5)
+  return { term: correct.term, answer: correct.def, options }
+}
+
+function LessonQuiz({ vocab, expressions }) {
+  const [q, setQ] = useState(() => buildQuestion(vocab, expressions))
+  const [selected, setSelected] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+
+  if (!q) return null
+
+  const isCorrect = selected === q.answer
+
+  function next() { setQ(buildQuestion(vocab, expressions)); setSelected(null); setSubmitted(false) }
+
+  return (
+    <div>
+      <h4 style={{ fontSize: 13, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 12px' }}>
+        🧪 Quiz rápido
+      </h4>
+      <div style={{ background: '#f8fafc', borderRadius: 14, padding: '18px 20px', border: '1px solid rgba(0,128,128,0.15)' }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', margin: '0 0 14px' }}>
+          ¿Qué significa <em style={{ fontStyle: 'normal', color: '#FF6F61' }}>"{q.term}"</em>?
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          {q.options.map((opt, i) => {
+            let bg = '#fff', border = '1.5px solid rgba(0,128,128,0.2)', color = '#374151', fw = 500
+            if (submitted) {
+              if (opt === q.answer) { bg = '#dcfce7'; border = '1.5px solid #22c55e'; color = '#166534'; fw = 700 }
+              else if (opt === selected) { bg = '#fee2e2'; border = '1.5px solid #ef4444'; color = '#991b1b' }
+            } else if (opt === selected) {
+              bg = 'rgba(0,128,128,0.08)'; border = '1.5px solid #008080'; color = '#008080'
+            }
+            return (
+              <button key={i} onClick={() => !submitted && setSelected(opt)} style={{
+                background: bg, border, borderRadius: 10, padding: '10px 14px',
+                fontSize: 13, color, fontWeight: fw, textAlign: 'left',
+                cursor: submitted ? 'default' : 'pointer',
+              }}>{opt}</button>
+            )
+          })}
+        </div>
+        {!submitted ? (
+          <button onClick={() => selected && setSubmitted(true)} disabled={!selected} style={{
+            background: selected ? AMBER : '#e5e7eb', color: selected ? '#fff' : '#94a3b8',
+            border: 'none', borderRadius: 10, padding: '9px 18px',
+            fontSize: 13, fontWeight: 700, cursor: selected ? 'pointer' : 'not-allowed',
+          }}>Verificar →</button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: isCorrect ? '#16a34a' : '#dc2626' }}>
+              {isCorrect ? '✅ ¡Correcto!' : `❌ Era: "${q.answer}"`}
+            </span>
+            <button onClick={next} style={{ background: '#008080', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Siguiente →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Currículo tab ─────────────────────────────────────────────────────────────
 
 function CurriculoTab({ token }) {
@@ -1040,6 +1169,20 @@ function CurriculoTab({ token }) {
                     <div style={{ fontSize: 13, fontWeight: 800, color: '#FF6F61', marginBottom: 4 }}>✏️ Tu tarea</div>
                     <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.5 }}>Estudia el vocabulario y las expresiones de arriba. Prepara <strong>3 preguntas</strong> para hacerle a tu tutor sobre este tema durante la sesión.</p>
                   </div>
+
+                  {/* Flashcards */}
+                  {(vocab.length > 0 || exprs.length > 0) && (
+                    <div style={{ borderTop: '1px solid rgba(0,128,128,0.1)', paddingTop: 20 }}>
+                      <FlashcardDeck vocab={vocab} expressions={exprs} />
+                    </div>
+                  )}
+
+                  {/* Quiz */}
+                  {(vocab.length + exprs.length) >= 2 && (
+                    <div style={{ borderTop: '1px solid rgba(0,128,128,0.1)', paddingTop: 20 }}>
+                      <LessonQuiz vocab={vocab} expressions={exprs} />
+                    </div>
+                  )}
 
                   {/* Advance button — only on current lesson */}
                   {isCurrent && current_lesson_number < total && (

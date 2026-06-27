@@ -4,3 +4,7 @@ sqlalchemy==2.0.36
 bcrypt==4.2.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.12
+anthropic>=0.40.0
+google-auth>=2.30.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.150.0

@@ -131,7 +131,10 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
   const { t } = useLanguage()
   const now = new Date()
   const upcomingMeetings = meetings
-    .filter(m => new Date(m.scheduled_at) >= now)
+    .filter(m => {
+      const end = new Date(new Date(m.scheduled_at).getTime() + m.duration_minutes * 60000)
+      return end >= now
+    })
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
 
   const nextMeeting = upcomingMeetings[0] || null

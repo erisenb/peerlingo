@@ -1351,7 +1351,6 @@ export default function StudentDashboard() {
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 24, borderBottom: '2px solid #fde68a' }}>
           <Tab id="inicio"    label="🏠 Inicio"                           active={tab === 'inicio'}    onClick={setTab} />
-          <Tab id="curriculo" label="📚 Currículo"                        active={tab === 'curriculo'} onClick={setTab} />
           <Tab id="tareas"    label={`📝 ${t('student.tab.tasks')}`}    active={tab === 'tareas'}    onClick={setTab} badge={pendingCount} />
           <Tab id="horario"   label="📅 Horario"                          active={tab === 'horario'}   onClick={setTab} />
           <Tab id="mensajes"  label={`💬 ${t('student.tab.messages')}`} active={tab === 'mensajes'}  onClick={setTab} />
@@ -1359,7 +1358,6 @@ export default function StudentDashboard() {
         </div>
 
         {tab === 'inicio'    && <InicioTab user={user} meetings={meetings} assignments={assignments} onTabChange={setTab} token={token} />}
-        {tab === 'curriculo' && <CurriculoTab token={token} />}
         {tab === 'tareas'    && <TareasTab token={token} assignments={assignments} onComplete={handleComplete} onUncomplete={handleUncomplete} />}
         {tab === 'horario'   && <HorarioTab meetings={meetings} />}
         {tab === 'mensajes'  && <MensajesTab token={token} user={user} />}

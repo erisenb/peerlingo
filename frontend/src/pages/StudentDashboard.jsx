@@ -780,6 +780,50 @@ function MensajesTab({ token, user }) {
 const MES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIA_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
+function _icalFmt(d) {
+  return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+}
+function googleCalUrl(m) {
+  const start = new Date(m.scheduled_at)
+  const end = new Date(start.getTime() + m.duration_minutes * 60000)
+  const p = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: m.title,
+    dates: `${_icalFmt(start)}/${_icalFmt(end)}`,
+    details: [m.notes, m.meeting_url].filter(Boolean).join('\n'),
+    location: m.meeting_url || '',
+  })
+  return `https://calendar.google.com/calendar/render?${p}`
+}
+function appleCalUrl(m) {
+  const start = new Date(m.scheduled_at)
+  const end = new Date(start.getTime() + m.duration_minutes * 60000)
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PeerLingo//EN',
+    'BEGIN:VEVENT',
+    `DTSTART:${_icalFmt(start)}`,
+    `DTEND:${_icalFmt(end)}`,
+    `SUMMARY:${m.title}`,
+    m.notes ? `DESCRIPTION:${m.notes}` : null,
+    m.meeting_url ? `LOCATION:${m.meeting_url}` : null,
+    'END:VEVENT', 'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n')
+  return `data:text/calendar;charset=utf8,${encodeURIComponent(ics)}`
+}
+function outlookCalUrl(m) {
+  const start = new Date(m.scheduled_at)
+  const end = new Date(start.getTime() + m.duration_minutes * 60000)
+  const p = new URLSearchParams({
+    rru: 'addevent',
+    startdt: start.toISOString(),
+    enddt: end.toISOString(),
+    subject: m.title,
+    body: [m.notes, m.meeting_url].filter(Boolean).join('\n'),
+    location: m.meeting_url || '',
+  })
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${p}`
+}
+
 function HorarioTab({ meetings }) {
   const today = new Date()
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -927,6 +971,25 @@ function HorarioTab({ meetings }) {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Add to calendar buttons */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                      <a href={googleCalUrl(m)} target="_blank" rel="noreferrer" style={{
+                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#4285f4',
+                        color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
+                        textDecoration: 'none', textAlign: 'center',
+                      }}>📅 Google Calendar</a>
+                      <a href={appleCalUrl(m)} download={`${m.title}.ics`} style={{
+                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#1c1c1e',
+                        color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
+                        textDecoration: 'none', textAlign: 'center',
+                      }}>🍎 Apple Calendar</a>
+                      <a href={outlookCalUrl(m)} target="_blank" rel="noreferrer" style={{
+                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#0078d4',
+                        color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
+                        textDecoration: 'none', textAlign: 'center',
+                      }}>📧 Outlook</a>
                     </div>
 
                     {/* Join button — appears 15 min before start, disappears after session ends */}

@@ -72,6 +72,11 @@ with database.engine.connect() as _c:
         _c.commit()
     except Exception:
         pass
+    try:
+        _c.execute(text("ALTER TABLE vp_assignments ADD COLUMN vp_lesson_id INTEGER REFERENCES vp_curriculum_lessons(id)"))
+        _c.commit()
+    except Exception:
+        pass
     # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
     try:
         _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
@@ -98,6 +103,13 @@ try:
         _seed_curriculum_es_fn(_seed_db)
 except Exception as _seed_err:
     print(f"[curriculum seed es] {_seed_err}")
+
+try:
+    from vp_flashcard_seed_es import update_flashcard_es as _update_flashcard_es_fn
+    with database.SessionLocal() as _seed_db:
+        _update_flashcard_es_fn(_seed_db)
+except Exception as _seed_err:
+    print(f"[flashcard seed es] {_seed_err}")
 
 _CURRICULUM_TRACKS = {
     'beginner': [
@@ -561,6 +573,7 @@ class AssignmentBody(BaseModel):
     due_date: Optional[str] = None
     student_id: Optional[int] = None   # None = all students
     curriculum_id: Optional[int] = None
+    vp_lesson_id: Optional[int] = None
 
 class AssignmentOut(BaseModel):
     id: int
@@ -573,6 +586,7 @@ class AssignmentOut(BaseModel):
     student_id: Optional[int]
     curriculum_id: Optional[int]
     curriculum_title: Optional[str]
+    vp_lesson_id: Optional[int]
     completed_by_me: bool
     created_at: str
 
@@ -679,6 +693,7 @@ def _assignment_out(a: models.Assignment, db: Session, current_user_id: Optional
         tutor_id=a.tutor_id, tutor_name=tutor.full_name if tutor else "Unknown",
         student_id=a.student_id, curriculum_id=a.curriculum_id,
         curriculum_title=cur.title if cur else None,
+        vp_lesson_id=a.vp_lesson_id,
         completed_by_me=completed, created_at=a.created_at.isoformat(),
     )
 
@@ -1802,6 +1817,18 @@ def tutor_get_student_curriculum(student_id: int, current_user: models.User = De
     return _student_curriculum_items(student_id, db)
 
 
+@router.get("/api/curriculum/lessons/{lesson_id}/flashcards")
+def get_lesson_flashcards(lesson_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    hw = db.query(models.VPHomeworkAssignment).filter(models.VPHomeworkAssignment.lesson_id == lesson_id).first()
+    if not hw:
+        raise HTTPException(status_code=404, detail="No flashcard data for this lesson")
+    lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
+    return {
+        "lesson_title": lesson.title if lesson else "",
+        "vocabulary": hw.vocabulary,
+        "expressions": hw.expressions,
+    }
+
 # ── Assignments ───────────────────────────────────────────────────────────────
 
 @router.get("/api/assignments", response_model=list[AssignmentOut])
@@ -1828,7 +1855,7 @@ def create_assignment(body: AssignmentBody, current_user: models.User = Depends(
         title=body.title, description=body.description,
         type=body.type, due_date=body.due_date,
         tutor_id=current_user.id, student_id=body.student_id,
-        curriculum_id=body.curriculum_id,
+        curriculum_id=body.curriculum_id, vp_lesson_id=body.vp_lesson_id,
     )
     db.add(a); db.commit(); db.refresh(a)
     return _assignment_out(a, db)

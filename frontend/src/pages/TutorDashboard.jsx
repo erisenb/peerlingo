@@ -773,6 +773,7 @@ function MyStudentsTab({ token }) {
           due_date: null,
           student_id: selected.id,
           curriculum_id: null,
+          vp_lesson_id: item.lesson_id,
         }),
       })
       const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })

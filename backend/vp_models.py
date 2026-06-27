@@ -98,6 +98,7 @@ class Assignment(Base):
     tutor_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False)
     student_id = Column(Integer, ForeignKey("vp_users.id"), nullable=True)
     curriculum_id = Column(Integer, ForeignKey("vp_admin_lessons.id"), nullable=True)
+    vp_lesson_id = Column(Integer, ForeignKey("vp_curriculum_lessons.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

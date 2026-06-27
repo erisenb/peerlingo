@@ -269,8 +269,56 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
 
 // ── Assignment detail modal ───────────────────────────────────────────────────
 
+function FlashcardStudyModal({ lessonId, token, onClose }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/curriculum/lessons/${lessonId}/flashcards`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(setData)
+      .catch(() => setError('No se pudieron cargar las tarjetas.'))
+      .finally(() => setLoading(false))
+  }, [lessonId])
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1100, padding: 20,
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        background: '#fff', borderRadius: 20, padding: '28px 24px',
+        width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', margin: 0 }}>
+            📇 {data ? data.lesson_title : 'Flashcards'}
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', lineHeight: 1 }}>×</button>
+        </div>
+        {loading && <p style={{ color: '#9ca3af', textAlign: 'center', padding: 30 }}>Cargando tarjetas…</p>}
+        {error && <p style={{ color: '#ef4444', textAlign: 'center' }}>{error}</p>}
+        {data && (
+          <FlashcardDeck vocab={data.vocabulary} expressions={data.expressions} />
+        )}
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ background: '#008080', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncomplete }) {
   const [curriculum, setCurriculum] = useState(null)
+  const [showFlashcards, setShowFlashcards] = useState(false)
   const t = TIPO_ES[assignment.type] || TIPO_ES.homework
 
   useEffect(() => {
@@ -282,6 +330,7 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
   }, [assignment.curriculum_id])
 
   return (
+    <>
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -353,6 +402,21 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
           </div>
         )}
 
+        {assignment.vp_lesson_id && (
+          <div style={{ marginBottom: 16 }}>
+            <button
+              onClick={() => setShowFlashcards(true)}
+              style={{
+                width: '100%', background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
+                color: '#fff', border: 'none', borderRadius: 12, padding: '13px 18px',
+                fontSize: 15, fontWeight: 800, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+              📇 Ver y Estudiar Flashcards
+            </button>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ background: 'rgba(0,128,128,0.08)', color: '#374151', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             Cerrar
@@ -369,6 +433,14 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
         </div>
       </div>
     </div>
+    {showFlashcards && (
+      <FlashcardStudyModal
+        lessonId={assignment.vp_lesson_id}
+        token={token}
+        onClose={() => setShowFlashcards(false)}
+      />
+    )}
+    </>
   )
 }
 
@@ -1011,8 +1083,18 @@ function HorarioTab({ meetings }) {
 
 function FlashcardDeck({ vocab, expressions }) {
   const cards = [
-    ...vocab.map(v => ({ front: v.word, back: v.definition, label: 'Palabra' })),
-    ...expressions.map(e => ({ front: `"${e.expression}"`, back: e.meaning, label: 'Expresión' })),
+    ...vocab.map(v => ({
+      front: v.word,
+      back_word: v.word_es || null,
+      back_def: v.definition_es || v.definition,
+      label: 'Palabra',
+    })),
+    ...expressions.map(e => ({
+      front: `"${e.expression}"`,
+      back_word: null,
+      back_def: e.meaning_es || e.meaning,
+      label: 'Expresión',
+    })),
   ]
   const [idx, setIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -1029,7 +1111,7 @@ function FlashcardDeck({ vocab, expressions }) {
       </h4>
       <div onClick={() => setFlipped(f => !f)} style={{ perspective: '1000px', cursor: 'pointer', marginBottom: 12 }}>
         <div style={{
-          position: 'relative', width: '100%', height: 160,
+          position: 'relative', width: '100%', height: 180,
           transformStyle: 'preserve-3d',
           transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           transition: 'transform 0.4s ease',
@@ -1040,19 +1122,22 @@ function FlashcardDeck({ vocab, expressions }) {
             borderRadius: 14, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', padding: '16px 20px',
           }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{card.label}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{card.label} — English</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', textAlign: 'center', lineHeight: 1.4 }}>{card.front}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 10 }}>Toca para ver →</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 10 }}>Toca para ver en español →</div>
           </div>
           <div style={{
             position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             background: '#fff', border: '2px solid #FF6F61',
             borderRadius: 14, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', padding: '16px 20px',
+            alignItems: 'center', justifyContent: 'center', padding: '16px 20px', gap: 6,
           }}>
-            <div style={{ fontSize: 11, color: '#FF6F61', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Definición</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', textAlign: 'center', lineHeight: 1.5 }}>{card.back}</div>
+            <div style={{ fontSize: 11, color: '#FF6F61', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>En Español</div>
+            {card.back_word && (
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#1e293b', textAlign: 'center' }}>{card.back_word}</div>
+            )}
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#475569', textAlign: 'center', lineHeight: 1.5 }}>{card.back_def}</div>
           </div>
         </div>
       </div>

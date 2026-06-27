@@ -652,17 +652,25 @@ function MyLessonsTab({ token }) {
 
 // ── Assign-lesson modal (just picks a due date) ───────────────────────────────
 
-function DueDateModal({ lesson, studentName, onSave, onClose, saving }) {
+function DueDateModal({ lesson, lessonIndex, totalLessons, nextLesson, studentName, onSave, onClose, saving }) {
   const [dueDate, setDueDate] = useState('')
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
         <h2 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 16 }}>Assign Lesson</h2>
         <div style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#008080', marginBottom: 4 }}>
+            Lesson {lessonIndex + 1}/{totalLessons}
+          </div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{lesson.title}</div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>For {studentName}</div>
           {lesson.description && (
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{lesson.description}</div>
+          )}
+          {nextLesson && (
+            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,128,128,0.1)' }}>
+              Next up: <strong style={{ color: '#64748b' }}>{nextLesson.title}</strong>
+            </div>
           )}
         </div>
         <label style={labelStyle}>Due Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
@@ -821,6 +829,11 @@ function MyStudentsTab({ token }) {
   const assignedByCurriculumId = {}
   studentAssignments.forEach(a => { if (a.curriculum_id) assignedByCurriculumId[a.curriculum_id] = a })
   const nextUnassigned = studentCurriculum.find(item => !assignedByCurriculumId[item.lesson_id])
+  const nextUnassignedIdx = studentCurriculum.findIndex(item => !assignedByCurriculumId[item.lesson_id])
+  const lessonAfterNext = nextUnassignedIdx >= 0 && nextUnassignedIdx + 1 < studentCurriculum.length
+    ? studentCurriculum[nextUnassignedIdx + 1]
+    : null
+  const total = studentCurriculum.length
 
   return (
     <div>
@@ -901,9 +914,10 @@ function MyStudentsTab({ token }) {
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: isDone ? '#22c55e' : isNext ? '#008080' : '#cbd5e1', minWidth: 24 }}>
-                      {isDone ? '✅' : isNext ? '→' : `#${i + 1}`}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                      Lesson {i + 1}/{total}
                     </span>
+                    {isDone && <span style={{ fontSize: 12 }}>✅</span>}
                     <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{item.title}</span>
                     {isNext && (
                       <span style={{ fontSize: 11, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.1)', borderRadius: 20, padding: '2px 9px' }}>
@@ -917,8 +931,13 @@ function MyStudentsTab({ token }) {
                     </div>
                   )}
                   {isDone && (
-                    <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4, marginLeft: 32 }}>
+                    <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
                       Assigned{rec.due_date ? ` · Due ${rec.due_date}` : ' · No due date set'}
+                    </div>
+                  )}
+                  {isNext && lessonAfterNext && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 5 }}>
+                      After this → <strong style={{ color: '#64748b' }}>{lessonAfterNext.title}</strong>
                     </div>
                   )}
                 </div>
@@ -943,6 +962,9 @@ function MyStudentsTab({ token }) {
       {assigningLesson && (
         <DueDateModal
           lesson={assigningLesson}
+          lessonIndex={studentCurriculum.findIndex(x => x.lesson_id === assigningLesson.lesson_id)}
+          totalLessons={total}
+          nextLesson={lessonAfterNext}
           studentName={selected.full_name}
           onSave={assignLesson}
           onClose={() => setAssigningLesson(null)}

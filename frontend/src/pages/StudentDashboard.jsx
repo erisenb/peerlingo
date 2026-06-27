@@ -810,19 +810,6 @@ function appleCalUrl(m) {
   ].filter(Boolean).join('\r\n')
   return `data:text/calendar;charset=utf8,${encodeURIComponent(ics)}`
 }
-function outlookCalUrl(m) {
-  const start = new Date(m.scheduled_at)
-  const end = new Date(start.getTime() + m.duration_minutes * 60000)
-  const p = new URLSearchParams({
-    rru: 'addevent',
-    startdt: start.toISOString(),
-    enddt: end.toISOString(),
-    subject: m.title,
-    body: [m.notes, m.meeting_url].filter(Boolean).join('\n'),
-    location: m.meeting_url || '',
-  })
-  return `https://outlook.live.com/calendar/0/deeplink/compose?${p}`
-}
 
 function HorarioTab({ meetings }) {
   const today = new Date()
@@ -974,22 +961,17 @@ function HorarioTab({ meetings }) {
                     </div>
 
                     {/* Add to calendar buttons */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                       <a href={googleCalUrl(m)} target="_blank" rel="noreferrer" style={{
-                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#4285f4',
+                        flex: 1, padding: '9px 10px', background: '#4285f4',
                         color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
                         textDecoration: 'none', textAlign: 'center',
                       }}>📅 Google Calendar</a>
                       <a href={appleCalUrl(m)} download={`${m.title}.ics`} style={{
-                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#1c1c1e',
+                        flex: 1, padding: '9px 10px', background: '#1c1c1e',
                         color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
                         textDecoration: 'none', textAlign: 'center',
                       }}>🍎 Apple Calendar</a>
-                      <a href={outlookCalUrl(m)} target="_blank" rel="noreferrer" style={{
-                        flex: 1, minWidth: 130, padding: '8px 10px', background: '#0078d4',
-                        color: '#fff', borderRadius: 9, fontSize: 12, fontWeight: 700,
-                        textDecoration: 'none', textAlign: 'center',
-                      }}>📧 Outlook</a>
                     </div>
 
                     {/* Join button — appears 15 min before start, disappears after session ends */}

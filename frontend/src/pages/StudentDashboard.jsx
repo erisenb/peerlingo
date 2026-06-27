@@ -783,6 +783,11 @@ const DIA_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 function HorarioTab({ meetings }) {
   const today = new Date()
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(t)
+  }, [])
 
   const year  = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -864,45 +869,89 @@ function HorarioTab({ meetings }) {
         </div>
       </div>
 
-      {/* Session list for this month */}
+      {/* Upcoming meetings feed — all future sessions */}
       <div>
         <h3 style={{ fontSize: 15, fontWeight: 900, color: '#1e293b', marginBottom: 12 }}>
-          📅 Sesiones en {MES_ES[month]}
+          📅 Mis Reuniones
         </h3>
-        {upcomingThisMonth.length === 0 ? (
-          <div style={{ background: '#fff', borderRadius: 14, padding: '28px 20px', border: '2px dashed rgba(0,128,128,0.2)', textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>📭</div>
-            <p style={{ color: '#94a3b8', fontSize: 14, margin: 0 }}>No hay sesiones programadas este mes.</p>
-            <p style={{ color: '#b0c4ce', fontSize: 12, marginTop: 6 }}>Tu tutor programará sesiones contigo pronto.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {upcomingThisMonth.map(m => {
-              const dt = new Date(m.scheduled_at)
-              return (
-                <div key={m.id} style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid rgba(0,128,128,0.18)', boxShadow: '0 2px 8px rgba(0,128,128,0.06)', display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ background: 'rgba(0,128,128,0.1)', border: '2px solid rgba(0,128,128,0.25)', borderRadius: 10, padding: '8px 12px', textAlign: 'center', flexShrink: 0, minWidth: 46 }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: '#008080', lineHeight: 1 }}>{dt.getDate()}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase' }}>{MES_ES[dt.getMonth()].slice(0, 3)}</div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2b3d', marginBottom: 2 }}>{m.title}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>
-                      🕐 {dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · {m.duration_minutes} min
-                      {m.tutor_name && <span> · Con {m.tutor_name}</span>}
+        {(() => {
+          const upcoming = meetings
+            .filter(m => {
+              const end = new Date(new Date(m.scheduled_at).getTime() + m.duration_minutes * 60000)
+              return end >= now
+            })
+            .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+
+          if (upcoming.length === 0) return (
+            <div style={{ background: '#fff', borderRadius: 14, padding: '36px 20px', border: '2px dashed rgba(0,128,128,0.2)', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>📭</div>
+              <p style={{ color: '#64748b', fontSize: 15, fontWeight: 700, margin: 0 }}>No hay reuniones programadas</p>
+              <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 6 }}>Tu tutor programará la próxima sesión contigo pronto.</p>
+            </div>
+          )
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {upcoming.map(m => {
+                const dt = new Date(m.scheduled_at)
+                const msUntil = dt - now
+                const msAfterStart = now - dt
+                const canJoin = m.meeting_url && msUntil <= 15 * 60 * 1000 && msAfterStart < m.duration_minutes * 60 * 1000
+                const startingSoon = msUntil > 0 && msUntil <= 15 * 60 * 1000
+
+                return (
+                  <div key={m.id} style={{
+                    background: '#fff', borderRadius: 16, padding: '18px 20px',
+                    border: startingSoon ? '2px solid #16a34a' : '1px solid rgba(0,128,128,0.18)',
+                    boxShadow: startingSoon ? '0 0 0 4px rgba(22,163,74,0.1)' : '0 2px 8px rgba(0,128,128,0.06)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      {/* Date badge */}
+                      <div style={{ background: 'rgba(0,128,128,0.08)', border: '2px solid rgba(0,128,128,0.2)', borderRadius: 12, padding: '8px 10px', textAlign: 'center', flexShrink: 0, minWidth: 48 }}>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: '#008080', lineHeight: 1 }}>{dt.getDate()}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase', marginTop: 2 }}>{MES_ES[dt.getMonth()].slice(0, 3)}</div>
+                      </div>
+
+                      {/* Details */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', marginBottom: 4 }}>{m.title}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginBottom: m.notes ? 6 : 0 }}>
+                          🕐 {dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          {' · '}{m.duration_minutes} min
+                          {m.tutor_name && <span> · Con <strong>{m.tutor_name}</strong></span>}
+                        </div>
+                        {m.notes && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, background: 'rgba(0,128,128,0.05)', borderRadius: 8, padding: '6px 10px' }}>
+                            <span style={{ fontSize: 12 }}>📖</span>
+                            <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{m.notes}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Join button — appears 15 min before start, disappears after session ends */}
+                    {canJoin && (
+                      <a href={m.meeting_url} target="_blank" rel="noreferrer" style={{
+                        display: 'block', marginTop: 14,
+                        background: '#16a34a', color: '#fff',
+                        borderRadius: 12, padding: '12px 0',
+                        fontSize: 14, fontWeight: 800, textDecoration: 'none',
+                        textAlign: 'center', letterSpacing: '0.3px',
+                      }}>
+                        🎥 Join Meeting
+                      </a>
+                    )}
+                    {startingSoon && !canJoin && (
+                      <div style={{ marginTop: 10, fontSize: 12, color: '#16a34a', fontWeight: 700, textAlign: 'center' }}>
+                        ● Starting in {Math.ceil(msUntil / 60000)} min
+                      </div>
+                    )}
                   </div>
-                  {m.meeting_url && (
-                    <a href={m.meeting_url} target="_blank" rel="noreferrer"
-                      style={{ background: '#008080', color: '#fff', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 800, textDecoration: 'none', flexShrink: 0 }}>
-                      Unirse →
-                    </a>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       <AvailabilityPanel isTutor={false} />

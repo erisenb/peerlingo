@@ -67,6 +67,11 @@ with database.engine.connect() as _c:
         _c.commit()
     except Exception:
         pass
+    try:
+        _c.execute(text("ALTER TABLE vp_meetings ADD COLUMN notes VARCHAR"))
+        _c.commit()
+    except Exception:
+        pass
     # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
     try:
         _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
@@ -573,6 +578,7 @@ class AssignmentOut(BaseModel):
 
 class MeetingBody(BaseModel):
     title: str
+    notes: Optional[str] = None
     scheduled_at: str     # ISO datetime string e.g. "2026-06-25T14:30"
     duration_minutes: int = 45
     meeting_url: Optional[str] = None
@@ -581,6 +587,7 @@ class MeetingBody(BaseModel):
 class MeetingOut(BaseModel):
     id: int
     title: str
+    notes: Optional[str]
     scheduled_at: str
     duration_minutes: int
     meeting_url: Optional[str]
@@ -679,7 +686,7 @@ def _meeting_out(m: models.Meeting, db: Session) -> MeetingOut:
     tutor = db.query(models.User).filter(models.User.id == m.tutor_id).first()
     student = db.query(models.User).filter(models.User.id == m.student_id).first()
     return MeetingOut(
-        id=m.id, title=m.title,
+        id=m.id, title=m.title, notes=m.notes,
         scheduled_at=m.scheduled_at.isoformat(),
         duration_minutes=m.duration_minutes,
         meeting_url=m.meeting_url,
@@ -1872,9 +1879,11 @@ def create_meeting(body: MeetingBody, current_user: models.User = Depends(get_cu
         scheduled = datetime.fromisoformat(body.scheduled_at)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format")
+    import secrets as _secrets
+    meeting_url = body.meeting_url or f"https://meet.jit.si/PeerLingo-{_secrets.token_urlsafe(10)}"
     m = models.Meeting(
-        title=body.title, scheduled_at=scheduled,
-        duration_minutes=body.duration_minutes, meeting_url=body.meeting_url,
+        title=body.title, notes=body.notes, scheduled_at=scheduled,
+        duration_minutes=body.duration_minutes, meeting_url=meeting_url,
         tutor_id=current_user.id, student_id=body.student_id,
     )
     db.add(m); db.commit(); db.refresh(m)

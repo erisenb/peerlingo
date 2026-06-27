@@ -115,6 +115,7 @@ class Meeting(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
+    notes = Column(String, nullable=True)       # lesson / topic to be covered
     scheduled_at = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, default=45)
     meeting_url = Column(String, nullable=True)

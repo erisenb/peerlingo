@@ -327,7 +327,7 @@ function AssignTab({ token, prefillCurriculum, onClearPrefill }) {
 
 function MeetingModal({ students, onSave, onClose, saving }) {
   const [form, setForm] = useState({
-    title: '', scheduled_at: '', duration_minutes: 45, meeting_url: '', student_id: '',
+    title: '', notes: '', scheduled_at: '', duration_minutes: 45, student_id: '',
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -335,13 +335,18 @@ function MeetingModal({ students, onSave, onClose, saving }) {
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={modalBox}>
         <h2 style={{ fontSize: 20, fontWeight: 900, color: '#1e293b', marginBottom: 4 }}>Schedule a Meeting</h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Students will see this on their home screen.</p>
+        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Students will see this on their schedule.</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={labelStyle}>Meeting Title *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)}
-              placeholder='e.g. "English session — Colors"' style={inputStyle} />
+              placeholder='e.g. "English Session #3"' style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Lesson / Topic to Cover</label>
+            <input value={form.notes} onChange={e => set('notes', e.target.value)}
+              placeholder='e.g. "Colors, numbers, and greetings"' style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Student *</label>
@@ -359,10 +364,12 @@ function MeetingModal({ students, onSave, onClose, saving }) {
             <input type="number" min={15} max={120} value={form.duration_minutes}
               onChange={e => set('duration_minutes', Number(e.target.value))} style={{ ...inputStyle, width: 120 }} />
           </div>
-          <div>
-            <label style={labelStyle}>Meeting Link (optional)</label>
-            <input value={form.meeting_url} onChange={e => set('meeting_url', e.target.value)}
-              placeholder="https://meet.google.com/..." style={inputStyle} />
+          <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>🎥</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d', marginBottom: 3 }}>Jitsi Meet room auto-created</div>
+              <div style={{ fontSize: 12, color: '#166534' }}>A unique video room will be generated automatically. Students see a "Join Meeting" button 15 minutes before the session — no link needed.</div>
+            </div>
           </div>
         </div>
 
@@ -473,12 +480,15 @@ function MeetingCard({ meeting, onDelete }) {
     }}>
       <div>
         <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b', marginBottom: 3 }}>{meeting.title}</div>
-        <div style={{ fontSize: 13, color: '#64748b' }}>
+        <div style={{ fontSize: 13, color: '#64748b', marginBottom: 3 }}>
           📅 {formatDT(meeting.scheduled_at)} · {meeting.duration_minutes} min · with {meeting.student_name}
         </div>
+        {meeting.notes && (
+          <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>📖 {meeting.notes}</div>
+        )}
         {meeting.meeting_url && (
           <a href={meeting.meeting_url} target="_blank" rel="noreferrer"
-            style={{ fontSize: 12, color: '#2563eb', fontWeight: 700 }}>Join Meeting →</a>
+            style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>🎥 Open Jitsi Room →</a>
         )}
       </div>
       <div style={{ display: 'flex', gap: 6 }}>

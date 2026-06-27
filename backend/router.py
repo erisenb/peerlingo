@@ -1732,12 +1732,21 @@ def _student_curriculum_items(student_id: int, db: Session):
     for sc in rows:
         lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == sc.lesson_id).first()
         if lesson:
+            track_total = db.query(models.VPCurriculumLesson).filter(
+                models.VPCurriculumLesson.curriculum_id == lesson.curriculum_id
+            ).count()
+            next_lesson = db.query(models.VPCurriculumLesson).filter(
+                models.VPCurriculumLesson.curriculum_id == lesson.curriculum_id,
+                models.VPCurriculumLesson.lesson_number == lesson.lesson_number + 1,
+            ).first()
             snippet = lesson.outline[:120].rstrip() + '…' if len(lesson.outline) > 120 else lesson.outline
             result.append({
                 "id": sc.id, "lesson_id": sc.lesson_id,
                 "lesson_number": lesson.lesson_number,
                 "title": lesson.title, "description": snippet,
                 "content": lesson.outline, "order_index": sc.order_index,
+                "track_total": track_total,
+                "next_in_track_title": next_lesson.title if next_lesson else None,
             })
     return result
 

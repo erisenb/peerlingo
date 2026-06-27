@@ -652,7 +652,7 @@ function MyLessonsTab({ token }) {
 
 // ── Assign-lesson modal (just picks a due date) ───────────────────────────────
 
-function DueDateModal({ lesson, lessonIndex, totalLessons, nextLesson, studentName, onSave, onClose, saving }) {
+function DueDateModal({ lesson, totalLessons, nextLessonTitle, studentName, onSave, onClose, saving }) {
   const [dueDate, setDueDate] = useState('')
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -660,16 +660,16 @@ function DueDateModal({ lesson, lessonIndex, totalLessons, nextLesson, studentNa
         <h2 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 16 }}>Assign Lesson</h2>
         <div style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#008080', marginBottom: 4 }}>
-            Lesson {lessonIndex + 1}/{totalLessons}
+            Lesson {lesson.lesson_number}/{totalLessons}
           </div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{lesson.title}</div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>For {studentName}</div>
           {lesson.description && (
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{lesson.description}</div>
           )}
-          {nextLesson && (
+          {nextLessonTitle && (
             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,128,128,0.1)' }}>
-              Next up: <strong style={{ color: '#64748b' }}>{nextLesson.title}</strong>
+              Next up: <strong style={{ color: '#64748b' }}>{nextLessonTitle}</strong>
             </div>
           )}
         </div>
@@ -829,11 +829,6 @@ function MyStudentsTab({ token }) {
   const assignedByCurriculumId = {}
   studentAssignments.forEach(a => { if (a.curriculum_id) assignedByCurriculumId[a.curriculum_id] = a })
   const nextUnassigned = studentCurriculum.find(item => !assignedByCurriculumId[item.lesson_id])
-  const nextUnassignedIdx = studentCurriculum.findIndex(item => !assignedByCurriculumId[item.lesson_id])
-  const lessonAfterNext = nextUnassignedIdx >= 0 && nextUnassignedIdx + 1 < studentCurriculum.length
-    ? studentCurriculum[nextUnassignedIdx + 1]
-    : null
-  const total = studentCurriculum.length
 
   return (
     <div>
@@ -915,7 +910,7 @@ function MyStudentsTab({ token }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
-                      Lesson {i + 1}/{total}
+                      Lesson {item.lesson_number}/{item.track_total || studentCurriculum.length}
                     </span>
                     {isDone && <span style={{ fontSize: 12 }}>✅</span>}
                     <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{item.title}</span>
@@ -935,9 +930,9 @@ function MyStudentsTab({ token }) {
                       Assigned{rec.due_date ? ` · Due ${rec.due_date}` : ' · No due date set'}
                     </div>
                   )}
-                  {isNext && lessonAfterNext && (
+                  {isNext && item.next_in_track_title && (
                     <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 5 }}>
-                      After this → <strong style={{ color: '#64748b' }}>{lessonAfterNext.title}</strong>
+                      Next up: <strong style={{ color: '#64748b' }}>{item.next_in_track_title}</strong>
                     </div>
                   )}
                 </div>
@@ -962,9 +957,8 @@ function MyStudentsTab({ token }) {
       {assigningLesson && (
         <DueDateModal
           lesson={assigningLesson}
-          lessonIndex={studentCurriculum.findIndex(x => x.lesson_id === assigningLesson.lesson_id)}
-          totalLessons={total}
-          nextLesson={lessonAfterNext}
+          totalLessons={assigningLesson.track_total || studentCurriculum.length}
+          nextLessonTitle={assigningLesson.next_in_track_title}
           studentName={selected.full_name}
           onSave={assignLesson}
           onClose={() => setAssigningLesson(null)}

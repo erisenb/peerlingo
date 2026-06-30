@@ -102,7 +102,7 @@ const translations = {
     // Login
     'login.title': 'Welcome Back',
     'login.subtitle': 'Sign in to your account',
-    'login.email': 'Email Address',
+    'login.email': 'Email or Username',
     'login.password': 'Password',
     'login.submit': 'Sign In',
     'login.noAccount': "Don't have an account?",
@@ -308,7 +308,7 @@ const translations = {
     // Login
     'login.title': 'Bienvenido',
     'login.subtitle': 'Inicia sesión en tu cuenta',
-    'login.email': 'Correo electrónico',
+    'login.email': 'Correo o nombre de usuario',
     'login.password': 'Contraseña',
     'login.submit': 'Iniciar sesión',
     'login.noAccount': '¿No tienes una cuenta?',

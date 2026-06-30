@@ -129,6 +129,7 @@ function TutorCard({ token }) {
 
 function InicioTab({ user, meetings, assignments, onTabChange, token }) {
   const { t } = useLanguage()
+  const [flashcardLesson, setFlashcardLesson] = useState(null)
   const now = new Date()
   const upcomingMeetings = meetings
     .filter(m => {
@@ -244,14 +245,28 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pendingAssignments.slice(0, 3).map(a => {
-              const t = TIPO_ES[a.type] || TIPO_ES.homework
+              const tp = TIPO_ES[a.type] || TIPO_ES.homework
               return (
-                <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: `1px solid ${t.bg}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ background: t.bg, color: t.color, borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginRight: 8 }}>{t.icon} {t.label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{a.title}</span>
+                <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: `1px solid ${tp.bg}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: a.vp_lesson_id ? 10 : 0 }}>
+                    <div>
+                      <span style={{ background: tp.bg, color: tp.color, borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginRight: 8 }}>{tp.icon} {tp.label}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{a.title}</span>
+                    </div>
+                    {a.due_date && <span style={{ fontSize: 12, color: '#94a3b8' }}>Vence: {a.due_date}</span>}
                   </div>
-                  {a.due_date && <span style={{ fontSize: 12, color: '#94a3b8' }}>Vence: {a.due_date}</span>}
+                  {a.vp_lesson_id && (
+                    <button
+                      onClick={() => setFlashcardLesson(a.vp_lesson_id)}
+                      style={{
+                        width: '100%', background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
+                        color: '#fff', border: 'none', borderRadius: 10, padding: '9px 14px',
+                        fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      📇 Ver y Estudiar Flashcards
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -263,6 +278,9 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
           </div>
         )}
       </div>
+      {flashcardLesson && (
+        <FlashcardStudyModal lessonId={flashcardLesson} token={token} onClose={() => setFlashcardLesson(null)} />
+      )}
     </div>
   )
 }

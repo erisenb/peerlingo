@@ -172,13 +172,13 @@ export default function LandingPage() {
                 style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: 12, padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? 14 : 15, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 28px rgba(255,111,97,0.4)', transition: 'transform 0.15s, box-shadow 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(255,111,97,0.5)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(255,111,97,0.4)' }}
-              ><span style={{ fontSize: 18 }}>🇺🇸</span> {t('landing.cta.volunteer')}</button>
+              >{t('landing.cta.volunteer')}</button>
 
               <button onClick={() => navigate('/register?role=student')}
                 style={{ background: 'rgba(0,128,128,0.08)', color: '#008080', border: '2px solid rgba(0,128,128,0.28)', borderRadius: 12, padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? 14 : 15, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, backdropFilter: 'blur(8px)', transition: 'transform 0.15s, background 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(0,128,128,0.12)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(0,128,128,0.08)' }}
-              ><span style={{ fontSize: 18 }}>🇵🇪</span> {t('landing.cta.student')}</button>
+              >{t('landing.cta.student')}</button>
             </div>
           </div>
 

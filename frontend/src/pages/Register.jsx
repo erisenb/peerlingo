@@ -234,10 +234,12 @@ export default function Register() {
                 <label style={labelStyle}>{isStudent && isEs ? 'Contraseña' : 'Password'} <span style={{ fontWeight: 400, color: '#7a9cac' }}>({isEs ? 'mín. 6 caracteres' : 'min. 6 chars'})</span></label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>{isStudent && isEs ? 'Escuela' : 'School'}</label>
-                <input value={school} onChange={e => setSchool(e.target.value)} placeholder={isStudent ? (isEs ? 'Tu escuela en Perú' : 'Your school in Peru') : 'Your high school in NJ'} style={inputStyle} />
-              </div>
+              {!isStudent && (
+                <div>
+                  <label style={labelStyle}>School</label>
+                  <input value={school} onChange={e => setSchool(e.target.value)} placeholder="Your high school in NJ" style={inputStyle} />
+                </div>
+              )}
               <div>
                 <label style={labelStyle}>{isStudent && isEs ? 'Grado' : 'Grade'}</label>
                 <select value={grade} onChange={e => setGrade(e.target.value)} style={inputStyle}>

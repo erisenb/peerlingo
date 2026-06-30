@@ -128,11 +128,6 @@ export default function LandingPage() {
 
         <div style={{ position: 'relative', zIndex: 2, width: '100%', padding: isMobile ? '100px 24px 64px' : isTablet ? '100px 40px 80px' : '88px 60px 80px' }}>
 
-          {/* Badge */}
-          <div style={{ marginBottom: isMobile ? 14 : 20 }}>
-            <span style={{ fontSize: 13, color: '#3a3a3a', fontWeight: 700, letterSpacing: '0.3px' }}>{t('landing.badge')}</span>
-          </div>
-
           {/* Headlines */}
           <div style={{ margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 4 }}>
             {[t('landing.headline1'), t('landing.headline2'), t('landing.headline3')].map((line, i) => (

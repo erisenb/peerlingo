@@ -130,7 +130,7 @@ export default function LandingPage() {
 
           {/* Headlines */}
           <div style={{ margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 4 }}>
-            {[t('landing.headline1'), t('landing.headline2'), t('landing.headline3')].map((line, i) => (
+            {[t('landing.headline1'), t('landing.headline2'), t('landing.headline3')].filter(Boolean).map((line, i) => (
               <span key={i} style={{ fontFamily: "'Trebuchet MS', sans-serif", fontSize: isMobile ? 44 : 'clamp(56px, 8.5vw, 118px)', fontWeight: 900, color: '#000', lineHeight: 1.0, letterSpacing: isMobile ? '-1.5px' : '-3px', display: 'block' }}>
                 {line}
               </span>

@@ -135,11 +135,16 @@ export default function LandingPage() {
 
           {/* Headlines */}
           <div style={{ margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 4 }}>
-            {[t('landing.headline1'), t('landing.headline2')].map((line, i) => (
-              <div key={i}>
-                <span style={{ fontSize: isMobile ? 22 : 'clamp(24px, 2.8vw, 40px)', fontWeight: 600, color: '#3d6275', lineHeight: 1.2, letterSpacing: '-0.5px', display: 'block' }}>{line},</span>
-              </div>
-            ))}
+            {[t('landing.headline1'), t('landing.headline2')].map((line, i) => {
+              const [firstWord, ...rest] = line.split(' ')
+              return (
+                <div key={i}>
+                  <span style={{ fontSize: isMobile ? 22 : 'clamp(24px, 2.8vw, 40px)', fontWeight: 600, color: '#3d6275', lineHeight: 1.2, letterSpacing: '-0.5px', display: 'block' }}>
+                    <span style={{ color: '#FF6F61', fontWeight: 900 }}>{firstWord}</span>{rest.length ? ' ' + rest.join(' ') : ''}
+                  </span>
+                </div>
+              )
+            })}
             <div style={{ marginTop: isMobile ? 6 : 10 }}>
               <span style={{ fontSize: isMobile ? 44 : 'clamp(56px, 8.5vw, 118px)', fontWeight: 900, color: '#FF6F61', lineHeight: 1.0, letterSpacing: isMobile ? '-1.5px' : '-3px', display: 'block', whiteSpace: 'pre-wrap' }}>{t('landing.headline3')}</span>
               <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 400, color: '#3d6275', marginTop: isMobile ? 8 : 12, display: 'block', fontStyle: 'italic' }}>

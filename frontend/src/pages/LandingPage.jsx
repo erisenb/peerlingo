@@ -301,10 +301,10 @@ export default function LandingPage() {
         style={{
           position: 'fixed', bottom: 28, right: 24, zIndex: 1000,
           background: lang === 'en' ? '#008080' : '#FF6F61',
-          color: '#fff', border: 'none', borderRadius: 14,
-          padding: '12px 18px', fontSize: 13, fontWeight: 700,
+          color: '#fff', border: 'none', borderRadius: 70,
+          padding: '60px 90px', fontSize: 65, fontWeight: 700,
           cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-          maxWidth: isMobile ? 180 : 220, textAlign: 'center', lineHeight: 1.4,
+          maxWidth: isMobile ? 360 : 440, textAlign: 'center', lineHeight: 1.4,
         }}
       >
         {lang === 'en' ? '¿Estudiante? ¡Presiona aquí!' : 'Tutor? Go here!'}

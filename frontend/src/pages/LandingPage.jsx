@@ -125,6 +125,11 @@ export default function LandingPage() {
       <section style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundImage: `url(${HERO_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center center' }} />
         <div style={{ position: 'absolute', inset: 0, background: splitLayout ? 'linear-gradient(to right, rgba(160,211,232,0.96) 0%, rgba(160,211,232,0.88) 28%, rgba(160,211,232,0.45) 54%, rgba(160,211,232,0.04) 100%)' : 'linear-gradient(to bottom, rgba(160,211,232,0.88) 0%, rgba(160,211,232,0.7) 100%)' }} />
+        <div style={{ position: 'absolute', top: 68, right: isMobile ? 16 : 24, zIndex: 10, textAlign: 'right' }}>
+          <span style={{ fontSize: 11, color: '#3d6275', fontStyle: 'italic', fontWeight: 600 }}>
+            {lang === 'en' ? '¿Estudiante? ¡Presiona aquí!' : 'Tutor? Go here!'}
+          </span>
+        </div>
 
         <div style={{ position: 'relative', zIndex: 2, width: '100%', padding: isMobile ? '100px 24px 64px' : isTablet ? '100px 40px 80px' : '88px 60px 80px' }}>
 

@@ -25,7 +25,10 @@ import Instructors from './pages/Instructors'
 import Students from './pages/Students'
 import FAQ from './pages/FAQ'
 import StudentSurvey from './pages/StudentSurvey'
+import MinorConsent from './pages/MinorConsent'
+import TutorConsent from './pages/TutorConsent'
 import TutorSurvey from './pages/TutorSurvey'
+import { needsMinorConsent } from './utils/age'
 import CurriculumPage from './pages/CurriculumPage'
 import WordBackground from './components/WordBackground'
 import PageArrows from './components/PageArrows'
@@ -54,10 +57,42 @@ function SurveyGuard({ children }) {
   return children
 }
 
+function ConsentGuard({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+  if (needsMinorConsent(user)) return <Navigate to="/consent" replace />
+  return children
+}
+
+function SurveyDoneGuard({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+  if (user?.role === 'student' && user.survey_completed) {
+    return <Navigate to={needsMinorConsent(user) ? '/consent' : '/dashboard/student'} replace />
+  }
+  return children
+}
+
 function TutorSurveyGuard({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
   if (user?.role === 'tutor' && !user.survey_completed) return <Navigate to="/tutor-survey" replace />
+  return children
+}
+
+function TutorConsentGuard({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+  if (user?.role === 'tutor' && !user.tutor_consent_version) return <Navigate to="/tutor-consent" replace />
+  return children
+}
+
+function TutorSurveyDoneGuard({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+  if (user?.role === 'tutor' && user.survey_completed) {
+    return <Navigate to="/dashboard/tutor" replace />
+  }
   return children
 }
 
@@ -106,8 +141,10 @@ function AnimatedRoutes() {
           <Route path="/curriculum" element={<CurriculumPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/survey" element={<RequireAuth role="student"><StudentSurvey /></RequireAuth>} />
-          <Route path="/tutor-survey" element={<RequireAuth role="tutor"><TutorSurvey /></RequireAuth>} />
+          <Route path="/survey" element={<RequireAuth role="student"><SurveyDoneGuard><StudentSurvey /></SurveyDoneGuard></RequireAuth>} />
+          <Route path="/consent" element={<RequireAuth role="student"><MinorConsent /></RequireAuth>} />
+          <Route path="/tutor-consent" element={<RequireAuth role="tutor"><TutorConsent /></RequireAuth>} />
+          <Route path="/tutor-survey" element={<RequireAuth role="tutor"><TutorSurveyDoneGuard><TutorSurvey /></TutorSurveyDoneGuard></RequireAuth>} />
           <Route path="/dev" element={import.meta.env.DEV ? <DevLogin /> : <Navigate to="/" replace />} />
 
           <Route path="/dashboard/admin" element={
@@ -116,7 +153,7 @@ function AnimatedRoutes() {
           <Route path="/admin" element={<Navigate to="/dashboard/admin" replace />} />
 
           <Route path="/dashboard/tutor" element={
-            <TutorSurveyGuard><RequireAuth role="tutor"><TutorDashboard /></RequireAuth></TutorSurveyGuard>
+            <TutorConsentGuard><TutorSurveyGuard><RequireAuth role="tutor"><TutorDashboard /></RequireAuth></TutorSurveyGuard></TutorConsentGuard>
           } />
           <Route path="/tutor" element={<Navigate to="/dashboard/tutor" replace />} />
           <Route path="/dashboard/tutor/lesson/:id" element={
@@ -124,11 +161,11 @@ function AnimatedRoutes() {
           } />
 
           <Route path="/dashboard/student" element={
-            <SurveyGuard><RequireAuth role="student"><StudentDashboard /></RequireAuth></SurveyGuard>
+            <SurveyGuard><ConsentGuard><RequireAuth role="student"><StudentDashboard /></RequireAuth></ConsentGuard></SurveyGuard>
           } />
           <Route path="/student" element={<Navigate to="/dashboard/student" replace />} />
           <Route path="/dashboard/student/lesson/:id" element={
-            <RequireAuth role="student"><StudentLessonView /></RequireAuth>
+            <ConsentGuard><RequireAuth role="student"><StudentLessonView /></RequireAuth></ConsentGuard>
           } />
 
           <Route path="/dashboard/profile" element={

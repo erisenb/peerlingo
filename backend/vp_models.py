@@ -49,6 +49,10 @@ class User(Base):
     availability_times = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     receive_reminders = Column(Boolean, default=True, nullable=True)
+    minor_consent_version = Column(String, nullable=True)
+    minor_consent_accepted_at = Column(DateTime, nullable=True)
+    tutor_consent_version = Column(String, nullable=True)
+    tutor_consent_accepted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -51,6 +51,10 @@ with database.engine.connect() as _c:
         ('availability_times', 'VARCHAR'),
         ('phone', 'VARCHAR'),
         ('receive_reminders', 'BOOLEAN DEFAULT TRUE'),
+        ('minor_consent_version', 'VARCHAR'),
+        ('minor_consent_accepted_at', 'DATETIME'),
+        ('tutor_consent_version', 'VARCHAR'),
+        ('tutor_consent_accepted_at', 'DATETIME'),
     ]:
         try:
             _c.execute(text(f"ALTER TABLE vp_users ADD COLUMN {_col} {_coltype}"))
@@ -418,6 +422,8 @@ router = APIRouter()
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+MINOR_CONSENT_VERSION = "1.0"
+
 class RegisterRequest(BaseModel):
     email: str
     full_name: str
@@ -426,6 +432,7 @@ class RegisterRequest(BaseModel):
     school: Optional[str] = None
     grade: Optional[str] = None
     language: Optional[str] = 'en'
+    minor_consent_version: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
@@ -452,6 +459,10 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     receive_reminders: Optional[bool] = True
     has_social_login: bool = False
+    minor_consent_version: Optional[str] = None
+    minor_consent_accepted_at: Optional[str] = None
+    tutor_consent_version: Optional[str] = None
+    tutor_consent_accepted_at: Optional[str] = None
 
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
@@ -462,7 +473,6 @@ class ProfileUpdate(BaseModel):
     country: Optional[str] = None
     grade: Optional[str] = None
     spanish_level: Optional[str] = None
-    date_of_birth: Optional[str] = None
     english_level: Optional[str] = None
     preferred_focus: Optional[str] = None
     preferred_tutor_gender: Optional[str] = None
@@ -517,7 +527,11 @@ def _user_out(user: models.User) -> UserOut:
                    availability_times=user.availability_times,
                    phone=user.phone,
                    receive_reminders=True if user.receive_reminders is None else bool(user.receive_reminders),
-                   has_social_login=bool(user.google_id))
+                   has_social_login=bool(user.google_id),
+                   minor_consent_version=user.minor_consent_version,
+                   minor_consent_accepted_at=user.minor_consent_accepted_at.isoformat() if user.minor_consent_accepted_at else None,
+                   tutor_consent_version=user.tutor_consent_version,
+                   tutor_consent_accepted_at=user.tutor_consent_accepted_at.isoformat() if user.tutor_consent_accepted_at else None)
 
 class LessonBody(BaseModel):
     title: str
@@ -610,6 +624,8 @@ class MeetingOut(BaseModel):
     student_id: int
     student_name: str
     created_at: str
+    assignments_total: int
+    assignments_completed: int
 
 class PairingOut(BaseModel):
     id: int
@@ -700,6 +716,21 @@ def _assignment_out(a: models.Assignment, db: Session, current_user_id: Optional
 def _meeting_out(m: models.Meeting, db: Session) -> MeetingOut:
     tutor = db.query(models.User).filter(models.User.id == m.tutor_id).first()
     student = db.query(models.User).filter(models.User.id == m.student_id).first()
+
+    assignment_ids = [
+        a.id for a in db.query(models.Assignment.id).filter(
+            models.Assignment.tutor_id == m.tutor_id,
+            or_(models.Assignment.student_id == m.student_id, models.Assignment.student_id == None),
+        ).all()
+    ]
+    assignments_total = len(assignment_ids)
+    assignments_completed = 0
+    if assignment_ids:
+        assignments_completed = db.query(models.AssignmentCompletion).filter(
+            models.AssignmentCompletion.assignment_id.in_(assignment_ids),
+            models.AssignmentCompletion.student_id == m.student_id,
+        ).count()
+
     return MeetingOut(
         id=m.id, title=m.title, notes=m.notes,
         scheduled_at=m.scheduled_at.isoformat(),
@@ -708,6 +739,7 @@ def _meeting_out(m: models.Meeting, db: Session) -> MeetingOut:
         tutor_id=m.tutor_id, tutor_name=tutor.full_name if tutor else "Unknown",
         student_id=m.student_id, student_name=student.full_name if student else "Unknown",
         created_at=m.created_at.isoformat(),
+        assignments_total=assignments_total, assignments_completed=assignments_completed,
     )
 
 
@@ -781,10 +813,13 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         if existing.role != req.role:
             raise HTTPException(status_code=409, detail="This email is already registered as a different account type. Please sign in instead.")
         raise HTTPException(status_code=400, detail="Email already registered")
+    now = datetime.utcnow()
     user = models.User(email=req.email, full_name=req.full_name,
                        hashed_password=hash_password(req.password),
                        role=req.role, school=req.school, grade=req.grade,
-                       language=req.language or 'en')
+                       language=req.language or 'en',
+                       minor_consent_version=req.minor_consent_version if req.minor_consent_version else None,
+                       minor_consent_accepted_at=now if req.minor_consent_version else None)
     db.add(user); db.commit(); db.refresh(user)
     return AuthResponse(access_token=create_access_token(user.id),
                         token_type="bearer", user=_user_out(user))
@@ -973,6 +1008,10 @@ def dev_reset_for_registration(email: Optional[str] = None, role: Optional[str] 
     user.preferred_tutor_gender = None
     user.phone = None
     user.receive_reminders = True
+    user.minor_consent_version = None
+    user.minor_consent_accepted_at = None
+    user.tutor_consent_version = None
+    user.tutor_consent_accepted_at = None
     if _DEV_BASELINE[email]["role"] == models.UserRole.student:
         db.query(models.VPStudentProgress).filter(
             models.VPStudentProgress.student_id == user.id
@@ -1108,8 +1147,6 @@ def update_profile(body: ProfileUpdate, current_user: models.User = Depends(get_
         current_user.grade = body.grade
     if body.spanish_level is not None:
         current_user.spanish_level = body.spanish_level
-    if body.date_of_birth is not None:
-        current_user.date_of_birth = body.date_of_birth
     if body.english_level is not None:
         current_user.english_level = body.english_level
     if body.preferred_focus is not None:
@@ -1136,7 +1173,7 @@ def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_c
     _require_student(current_user)
     if body.full_name and body.full_name.strip():
         current_user.full_name = body.full_name.strip()
-    if body.date_of_birth is not None:
+    if body.date_of_birth is not None and not current_user.minor_consent_version:
         current_user.date_of_birth = body.date_of_birth
     if body.english_level is not None:
         current_user.english_level = body.english_level
@@ -1205,6 +1242,33 @@ def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_c
         db.add(welcome_msg)
         db.commit()
 
+    return _user_out(current_user)
+
+class MinorConsentRequest(BaseModel):
+    version: Optional[str] = None
+
+@router.post("/api/auth/minor-consent", response_model=UserOut)
+def accept_minor_consent(body: MinorConsentRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_student(current_user)
+    current_user.minor_consent_version = body.version or MINOR_CONSENT_VERSION
+    current_user.minor_consent_accepted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    return _user_out(current_user)
+
+TUTOR_CONSENT_VERSION = "1.0"
+
+class TutorConsentRequest(BaseModel):
+    version: Optional[str] = None
+
+@router.post("/api/auth/tutor-consent", response_model=UserOut)
+def accept_tutor_consent(body: TutorConsentRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != models.UserRole.tutor:
+        raise HTTPException(status_code=403, detail="Only tutors can accept the tutor consent form")
+    current_user.tutor_consent_version = body.version or TUTOR_CONSENT_VERSION
+    current_user.tutor_consent_accepted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
     return _user_out(current_user)
 
 # ── Curriculum endpoints ───────────────────────────────────────────────────────

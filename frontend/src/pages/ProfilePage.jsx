@@ -54,6 +54,22 @@ const inputStyle = {
 const labelStyle = { display: 'block', fontSize: 13, fontWeight: 700, color: '#3d6275', marginBottom: 6 }
 const sectionHeadStyle = { fontSize: 13, fontWeight: 800, color: '#7a9cac', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 16px' }
 
+function formatConsentDate(version, isoString, isEs) {
+  const d = new Date(isoString)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const year = d.getFullYear()
+  let hours = d.getHours()
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'pm' : 'am'
+  hours = hours % 12 || 12
+  const timeStr = `${hours}:${minutes} ${ampm}`
+  if (isEs) {
+    return `Formulario de consentimiento versión ${version} firmado el ${month}/${day}/${year}, ${timeStr}`
+  }
+  return `Consent form version ${version} signed on ${month}/${day}/${year}, ${timeStr}`
+}
+
 function Avatar({ user, size = 110, onUpload }) {
   const fileRef = useRef()
   const initial = user?.full_name?.[0]?.toUpperCase() || '?'
@@ -94,7 +110,6 @@ export default function ProfilePage() {
   const [school, setSchool] = useState(user?.school || '')
 
   // Student-specific editable fields
-  const [dob, setDob] = useState(user?.date_of_birth || '')
   const [englishLevel, setEnglishLevel] = useState(user?.english_level || '')
   const [tutorGender, setTutorGender] = useState(user?.preferred_tutor_gender || '')
   const [focus, setFocus] = useState(user?.preferred_focus || '')
@@ -131,7 +146,6 @@ export default function ProfilePage() {
         school: school || null,
       }
       if (isStudent) {
-        body.date_of_birth = dob || null
         body.english_level = englishLevel || null
         body.preferred_focus = focus || null
         body.preferred_tutor_gender = tutorGender || null
@@ -246,9 +260,31 @@ export default function ProfilePage() {
           {/* Read-only: email only */}
           <div style={{ marginBottom: 28 }}>
             <h3 style={sectionHeadStyle}>{isEs ? 'Información de cuenta' : 'Account Info'}</h3>
-            <div style={{ background: 'rgba(0,128,128,0.07)', border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '10px 16px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{isEs ? 'Correo electrónico' : 'Email'}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#0f2b3d' }}>{user?.email}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: 'rgba(0,128,128,0.07)', border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '10px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{isEs ? (isStudent ? 'Nombre de usuario' : 'Correo electrónico') : (isStudent ? 'Username' : 'Email')}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0f2b3d' }}>{user?.email}</div>
+              </div>
+              {isStudent && user?.minor_consent_version && user?.minor_consent_accepted_at && (
+                <div style={{ background: 'rgba(0,128,128,0.05)', border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '10px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
+                    {isEs ? 'Formulario de consentimiento' : 'Consent Form'}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#008080' }}>
+                    {formatConsentDate(user.minor_consent_version, user.minor_consent_accepted_at, isEs)}
+                  </div>
+                </div>
+              )}
+              {isTutor && user?.tutor_consent_version && user?.tutor_consent_accepted_at && (
+                <div style={{ background: 'rgba(0,128,128,0.05)', border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '10px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
+                    Consent Form
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#008080' }}>
+                    {formatConsentDate(user.tutor_consent_version, user.tutor_consent_accepted_at, false)}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -261,8 +297,14 @@ export default function ProfilePage() {
               <>
                 <div>
                   <label style={labelStyle}>{isEs ? 'Fecha de nacimiento' : 'Date of Birth'}</label>
-                  <input type="date" value={dob} onChange={e => setDob(e.target.value)}
-                    style={{ ...inputStyle, cursor: 'pointer' }} />
+                  <div style={{ ...inputStyle, background: 'rgba(0,128,128,0.05)', color: '#5a8090', cursor: 'not-allowed' }}>
+                    {user?.date_of_birth || (isEs ? 'No establecida' : 'Not set')}
+                  </div>
+                  <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, lineHeight: 1.5 }}>
+                    {isEs
+                      ? 'Tu fecha de nacimiento no se puede editar porque está vinculada a tu Formulario de Consentimiento. Si necesitas corregirla, contáctanos.'
+                      : "Your date of birth can't be edited because it's tied to your Consent Form. Contact us if it needs to be corrected."}
+                  </p>
                 </div>
 
                 <div>

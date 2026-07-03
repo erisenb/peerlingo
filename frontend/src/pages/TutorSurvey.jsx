@@ -60,6 +60,8 @@ export default function TutorSurvey() {
   const [school, setSchool] = useState(user?.school || '')
   const [grade, setGrade] = useState(user?.grade || '')
   const [spanishLevel, setSpanishLevel] = useState(user?.spanish_level || '')
+  const [weeklyHours, setWeeklyHours] = useState(user?.weekly_hours || '')
+  const [maxStudents, setMaxStudents] = useState(user?.max_students || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -83,6 +85,8 @@ export default function TutorSurvey() {
           school: school || null,
           grade: grade || null,
           spanish_level: spanishLevel || null,
+          weekly_hours: weeklyHours || null,
+          max_students: maxStudents || null,
         }),
       })
       if (!res.ok) throw new Error('Could not save. Please try again.')
@@ -240,6 +244,56 @@ export default function TutorSurvey() {
                     {spanishLevel === opt.value && (
                       <span style={{ marginLeft: 'auto', color: '#008080', fontSize: 18, flexShrink: 0 }}>✓</span>
                     )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Weekly hours commitment */}
+            <div>
+              <label style={lbl}>How many hours per week do you plan to invest in volunteering?</label>
+              <p style={{ fontSize: 13, color: '#7a9cac', margin: '0 0 10px', lineHeight: 1.5 }}>
+                Each session is 1 hour. Remember that prep time and homework assigning count toward your community service hours too.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {['1 hour', '2 hours', '3 hours', '4 hours', '5+ hours'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setWeeklyHours(opt)}
+                    style={{
+                      padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                      border: `2px solid ${weeklyHours === opt ? '#008080' : 'rgba(0,128,128,0.2)'}`,
+                      background: weeklyHours === opt ? 'rgba(0,128,128,0.1)' : '#fff',
+                      color: weeklyHours === opt ? '#008080' : '#3d6275',
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Max students */}
+            <div>
+              <label style={lbl}>How many students do you plan on taking at once?</label>
+              <p style={{ fontSize: 13, color: '#7a9cac', margin: '0 0 10px', lineHeight: 1.5 }}>
+                Each student gets their own dedicated session. We recommend starting with 1–2 students.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {['1 student', '2 students', '3 students', '4 students', '5+ students'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setMaxStudents(opt)}
+                    style={{
+                      padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                      border: `2px solid ${maxStudents === opt ? '#FF6F61' : 'rgba(255,111,97,0.2)'}`,
+                      background: maxStudents === opt ? 'rgba(255,111,97,0.08)' : '#fff',
+                      color: maxStudents === opt ? '#FF6F61' : '#3d6275',
+                    }}
+                  >
+                    {opt}
                   </button>
                 ))}
               </div>

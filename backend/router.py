@@ -56,6 +56,8 @@ with database.engine.connect() as _c:
         ('tutor_consent_version', 'VARCHAR'),
         ('tutor_consent_accepted_at', 'DATETIME'),
         ('apple_id', 'VARCHAR'),
+        ('weekly_hours', 'VARCHAR'),
+        ('max_students', 'VARCHAR'),
     ]:
         try:
             _c.execute(text(f"ALTER TABLE vp_users ADD COLUMN {_col} {_coltype}"))
@@ -464,6 +466,8 @@ class UserOut(BaseModel):
     minor_consent_accepted_at: Optional[str] = None
     tutor_consent_version: Optional[str] = None
     tutor_consent_accepted_at: Optional[str] = None
+    weekly_hours: Optional[str] = None
+    max_students: Optional[str] = None
 
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
@@ -503,6 +507,8 @@ class TutorSurveyRequest(BaseModel):
     school: Optional[str] = None
     grade: Optional[str] = None
     spanish_level: Optional[str] = None
+    weekly_hours: Optional[str] = None
+    max_students: Optional[str] = None
 
 class AuthResponse(BaseModel):
     access_token: str
@@ -532,7 +538,9 @@ def _user_out(user: models.User) -> UserOut:
                    minor_consent_version=user.minor_consent_version,
                    minor_consent_accepted_at=user.minor_consent_accepted_at.isoformat() if user.minor_consent_accepted_at else None,
                    tutor_consent_version=user.tutor_consent_version,
-                   tutor_consent_accepted_at=user.tutor_consent_accepted_at.isoformat() if user.tutor_consent_accepted_at else None)
+                   tutor_consent_accepted_at=user.tutor_consent_accepted_at.isoformat() if user.tutor_consent_accepted_at else None,
+                   weekly_hours=user.weekly_hours,
+                   max_students=user.max_students)
 
 class LessonBody(BaseModel):
     title: str
@@ -1440,6 +1448,10 @@ def submit_tutor_survey(body: TutorSurveyRequest, current_user: models.User = De
         current_user.grade = body.grade
     if body.spanish_level is not None:
         current_user.spanish_level = body.spanish_level
+    if body.weekly_hours is not None:
+        current_user.weekly_hours = body.weekly_hours
+    if body.max_students is not None:
+        current_user.max_students = body.max_students
     current_user.survey_completed = True
     db.commit()
     db.refresh(current_user)

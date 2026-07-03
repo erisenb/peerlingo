@@ -54,6 +54,8 @@ class User(Base):
     minor_consent_accepted_at = Column(DateTime, nullable=True)
     tutor_consent_version = Column(String, nullable=True)
     tutor_consent_accepted_at = Column(DateTime, nullable=True)
+    weekly_hours = Column(String, nullable=True)
+    max_students = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

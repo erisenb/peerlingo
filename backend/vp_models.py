@@ -36,6 +36,7 @@ class User(Base):
     profile_pic_filename = Column(String, nullable=True)
     language = Column(String, default='en', nullable=True)
     google_id = Column(String, nullable=True)
+    apple_id = Column(String, nullable=True)
     country = Column(String, nullable=True)
     city = Column(String, nullable=True)
     date_of_birth = Column(String, nullable=True)

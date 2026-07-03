@@ -153,7 +153,7 @@ function AnimatedRoutes() {
           <Route path="/admin" element={<Navigate to="/dashboard/admin" replace />} />
 
           <Route path="/dashboard/tutor" element={
-            <TutorConsentGuard><TutorSurveyGuard><RequireAuth role="tutor"><TutorDashboard /></RequireAuth></TutorSurveyGuard></TutorConsentGuard>
+            <TutorSurveyGuard><TutorConsentGuard><RequireAuth role="tutor"><TutorDashboard /></RequireAuth></TutorConsentGuard></TutorSurveyGuard>
           } />
           <Route path="/tutor" element={<Navigate to="/dashboard/tutor" replace />} />
           <Route path="/dashboard/tutor/lesson/:id" element={

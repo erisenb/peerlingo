@@ -12,7 +12,7 @@ UPLOAD_DIR = os.environ.get("VP_UPLOAD_DIR", os.path.join(_BACKEND_DIR, "uploads
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import and_, or_, text
@@ -55,6 +55,7 @@ with database.engine.connect() as _c:
         ('minor_consent_accepted_at', 'DATETIME'),
         ('tutor_consent_version', 'VARCHAR'),
         ('tutor_consent_accepted_at', 'DATETIME'),
+        ('apple_id', 'VARCHAR'),
     ]:
         try:
             _c.execute(text(f"ALTER TABLE vp_users ADD COLUMN {_col} {_coltype}"))
@@ -527,7 +528,7 @@ def _user_out(user: models.User) -> UserOut:
                    availability_times=user.availability_times,
                    phone=user.phone,
                    receive_reminders=True if user.receive_reminders is None else bool(user.receive_reminders),
-                   has_social_login=bool(user.google_id),
+                   has_social_login=bool(user.google_id or user.apple_id),
                    minor_consent_version=user.minor_consent_version,
                    minor_consent_accepted_at=user.minor_consent_accepted_at.isoformat() if user.minor_consent_accepted_at else None,
                    tutor_consent_version=user.tutor_consent_version,
@@ -798,9 +799,15 @@ _admin_emails_env = os.environ.get("VP_ADMIN_EMAILS", "")
 ADMIN_GMAIL_WHITELIST = {e.strip().lower() for e in _admin_emails_env.split(",") if e.strip()}
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID", "")
 
 class GoogleOAuthRequest(BaseModel):
     credential: str
+    role: Optional[models.UserRole] = None
+
+class AppleOAuthRequest(BaseModel):
+    identity_token: str
+    full_name: Optional[str] = None
     role: Optional[models.UserRole] = None
 
 @router.post("/api/auth/register", response_model=AuthResponse)
@@ -1070,6 +1077,56 @@ def google_auth(req: GoogleOAuthRequest, db: Session = Depends(get_db)):
         email=email, full_name=full_name, hashed_password="",
         role=req.role, language='es' if req.role == models.UserRole.student else 'en',
         google_id=google_id,
+    )
+    db.add(new_user); db.commit(); db.refresh(new_user)
+    return AuthResponse(access_token=create_access_token(new_user.id), token_type="bearer", user=_user_out(new_user))
+
+def _verify_apple_token(identity_token: str) -> dict:
+    from jose import jwt as jose_jwt
+    from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+    from cryptography.hazmat.backends import default_backend
+    import base64 as _b64, urllib.request as _req, json as _json
+    with _req.urlopen("https://appleid.apple.com/auth/keys", timeout=5) as _r:
+        apple_keys = _json.loads(_r.read())["keys"]
+    header = jose_jwt.get_unverified_header(identity_token)
+    key_data = next((k for k in apple_keys if k["kid"] == header.get("kid")), None)
+    if not key_data:
+        raise ValueError("No matching Apple public key")
+    def _b64int(s):
+        s += "=" * (-len(s) % 4)
+        return int.from_bytes(_b64.urlsafe_b64decode(s), "big")
+    pub = RSAPublicNumbers(_b64int(key_data["e"]), _b64int(key_data["n"])).public_key(default_backend())
+    return jose_jwt.decode(identity_token, pub, algorithms=["RS256"],
+                           audience=APPLE_CLIENT_ID, issuer="https://appleid.apple.com")
+
+@router.post("/api/auth/apple")
+def apple_auth(req: AppleOAuthRequest, db: Session = Depends(get_db)):
+    if not APPLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Apple Sign In is not configured on this server")
+    try:
+        claims = _verify_apple_token(req.identity_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Apple credential")
+    apple_sub = claims["sub"]
+    email = claims.get("email", "")
+    full_name = req.full_name or (email.split("@")[0] if email else "PeerLingo User")
+    existing = db.query(models.User).filter(
+        (models.User.apple_id == apple_sub) | (models.User.email == email)
+    ).first() if email else db.query(models.User).filter(models.User.apple_id == apple_sub).first()
+    if existing:
+        if req.role and existing.role != req.role:
+            raise HTTPException(status_code=409, detail="This Apple account is already registered as a different account type.")
+        if not existing.apple_id:
+            existing.apple_id = apple_sub
+            db.commit()
+        return AuthResponse(access_token=create_access_token(existing.id), token_type="bearer", user=_user_out(existing))
+    if not req.role:
+        return JSONResponse({"needs_role": True, "email": email, "full_name": full_name})
+    new_user = models.User(
+        email=email or f"apple_{apple_sub}@noemail.peerlingo",
+        full_name=full_name, hashed_password="",
+        role=req.role, language='en',
+        apple_id=apple_sub,
     )
     db.add(new_user); db.commit(); db.refresh(new_user)
     return AuthResponse(access_token=create_access_token(new_user.id), token_type="bearer", user=_user_out(new_user))

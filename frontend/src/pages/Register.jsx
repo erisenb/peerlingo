@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -7,11 +7,14 @@ import PublicFooter from '../components/PublicFooter'
 import { API_BASE } from '../api'
 import { MINOR_CONSENT_VERSION, MINOR_CONSENT_TEXT_ES } from '../data/minorConsent'
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const APPLE_CLIENT_ID = import.meta.env.VITE_APPLE_CLIENT_ID || ''
+
 const TUTOR_GRADES = ['9th Grade', '10th Grade', '11th Grade', '12th Grade']
 const STUDENT_GRADES = ['1ro', '2do', '3ro', '4to', '5to', '6to']
 
 export default function Register() {
-  const { register } = useAuth()
+  const { register, login } = useAuth()
   const { lang } = useLanguage()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -31,6 +34,7 @@ export default function Register() {
   const [generatedUsername, setGeneratedUsername] = useState(null)
   const [pendingUser, setPendingUser] = useState(null)
   const [consentChecked, setConsentChecked] = useState(false)
+  const googleBtnRef = useRef(null)
 
   const isStudent = role === 'student'
   const isEs = lang === 'es'
@@ -39,6 +43,80 @@ export default function Register() {
   const accentMuted = isStudent ? 'rgba(0,128,128,0.08)' : 'rgba(255,111,97,0.1)'
   const accentBorder = isStudent ? 'rgba(0,128,128,0.3)' : 'rgba(255,111,97,0.4)'
   const accentText = isStudent ? '#008080' : '#FF6F61'
+
+  async function handleSocialTutorResponse(data) {
+    if (!data.access_token) { setError('Sign-in failed. Please try again.'); return }
+    login(data.access_token, data.user)
+    navigate('/tutor-survey')
+  }
+
+  async function handleGoogleCredential(credential) {
+    setError(''); setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential, role: 'tutor' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Google sign-in failed')
+      handleSocialTutorResponse(data)
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
+  }
+
+  async function handleAppleSignUp() {
+    if (!window.AppleID) { setError('Apple Sign In is loading, please try again.'); return }
+    setError(''); setLoading(true)
+    try {
+      const response = await window.AppleID.auth.signIn()
+      const identity_token = response.authorization.id_token
+      const name = response.user?.name
+      const full_name = name ? `${name.firstName || ''} ${name.lastName || ''}`.trim() : undefined
+      const res = await fetch(`${API_BASE}/api/auth/apple`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity_token, full_name, role: 'tutor' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Apple sign-in failed')
+      handleSocialTutorResponse(data)
+    } catch (err) {
+      if (err.error === 'popup_closed_by_user') return
+      setError(err.message || 'Apple sign-in failed')
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => {
+    if (isStudent || !GOOGLE_CLIENT_ID) return
+    function initGoogle() {
+      if (!window.google?.accounts?.id || !googleBtnRef.current) return
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (resp) => handleGoogleCredential(resp.credential),
+      })
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: 'outline', size: 'large', text: 'signup_with', shape: 'rectangular',
+        width: googleBtnRef.current.offsetWidth || 360,
+      })
+    }
+    if (window.google?.accounts?.id) { initGoogle() } else {
+      const iv = setInterval(() => { if (window.google?.accounts?.id) { clearInterval(iv); initGoogle() } }, 150)
+      return () => clearInterval(iv)
+    }
+  }, [isStudent])
+
+  useEffect(() => {
+    if (isStudent || !APPLE_CLIENT_ID || !window.AppleID) return
+    try {
+      window.AppleID.auth.init({
+        clientId: APPLE_CLIENT_ID,
+        scope: 'name email',
+        redirectURI: window.location.origin + '/register',
+        usePopup: true,
+      })
+    } catch {}
+  }, [isStudent])
 
   function generateUsername(first, last) {
     const normalize = s => s
@@ -86,7 +164,7 @@ export default function Register() {
           grade: grade || null,
           language: 'en',
         })
-        navigate(user.role === 'tutor' ? '/tutor-consent' : '/survey')
+        navigate(user.role === 'tutor' ? '/tutor-survey' : '/survey')
       }
     } catch (err) {
       setError(err.message)
@@ -162,13 +240,18 @@ export default function Register() {
           <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,128,128,0.15)', borderRadius: 20, padding: '28px 24px', boxShadow: '0 4px 20px rgba(0,128,128,0.1)' }}>
 
             {/* Social sign-up buttons (tutors only) */}
-            {!isStudent && (
+            {!isStudent && (GOOGLE_CLIENT_ID || APPLE_CLIENT_ID) && (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
-                  <button onClick={() => alert(isEs ? 'Apple Sign In próximamente.' : 'Apple Sign In coming soon.')} style={socialBtn}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="#0f2b3d"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701z"/></svg>
-                    {isEs ? 'Regístrate con Apple' : 'Sign up with Apple'}
-                  </button>
+                  {GOOGLE_CLIENT_ID && (
+                    <div ref={googleBtnRef} style={{ width: '100%', minHeight: 44 }} />
+                  )}
+                  {APPLE_CLIENT_ID && (
+                    <button onClick={handleAppleSignUp} disabled={loading} style={socialBtn}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="#0f2b3d"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701z"/></svg>
+                      {isEs ? 'Regístrate con Apple' : 'Sign up with Apple'}
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ position: 'relative', textAlign: 'center', margin: '0 0 20px', borderTop: '1px solid rgba(0,128,128,0.12)' }}>

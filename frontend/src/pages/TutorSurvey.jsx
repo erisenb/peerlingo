@@ -86,8 +86,9 @@ export default function TutorSurvey() {
         }),
       })
       if (!res.ok) throw new Error('Could not save. Please try again.')
+      const updatedUser = await res.json()
       await refreshUser()
-      navigate('/dashboard/tutor')
+      navigate(updatedUser.tutor_consent_version ? '/dashboard/tutor' : '/tutor-consent')
     } catch (err) {
       setError(err.message)
     } finally {

@@ -742,7 +742,7 @@ def _meeting_out(m: models.Meeting, db: Session) -> MeetingOut:
 
     return MeetingOut(
         id=m.id, title=m.title, notes=m.notes,
-        scheduled_at=m.scheduled_at.isoformat(),
+        scheduled_at=m.scheduled_at.isoformat() + 'Z',
         duration_minutes=m.duration_minutes,
         meeting_url=m.meeting_url,
         tutor_id=m.tutor_id, tutor_name=tutor.full_name if tutor else "Unknown",
@@ -2045,7 +2045,11 @@ def list_meetings(current_user: models.User = Depends(get_current_user), db: Ses
 def create_meeting(body: MeetingBody, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     _require_tutor(current_user)
     try:
-        scheduled = datetime.fromisoformat(body.scheduled_at)
+        _s = body.scheduled_at.replace('Z', '+00:00')
+        scheduled = datetime.fromisoformat(_s)
+        if scheduled.tzinfo is not None:
+            from datetime import timezone as _tz
+            scheduled = scheduled.astimezone(_tz.utc).replace(tzinfo=None)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format")
     import secrets as _secrets

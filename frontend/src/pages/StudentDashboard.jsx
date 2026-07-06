@@ -33,12 +33,16 @@ function formatFechaES(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('es-ES', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'America/Lima',
   })
 }
 
 function formatHoraES(iso) {
   if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('es-ES', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Lima',
+  })
 }
 
 function timeUntil(iso) {

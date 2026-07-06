@@ -24,6 +24,7 @@ function formatDT(iso) {
   return new Date(iso).toLocaleString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
     year: 'numeric', hour: 'numeric', minute: '2-digit',
+    timeZone: 'America/New_York', timeZoneName: 'short',
   })
 }
 
@@ -356,8 +357,11 @@ function MeetingModal({ students, onSave, onClose, saving }) {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Date & Time *</label>
+            <label style={labelStyle}>Date & Time * <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>(New Jersey time — ET)</span></label>
             <input type="datetime-local" value={form.scheduled_at} onChange={e => set('scheduled_at', e.target.value)} style={{ ...inputStyle, width: 'auto' }} />
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              Students in Peru will see this automatically converted to Lima time.
+            </div>
           </div>
           <div>
             <label style={labelStyle}>Duration (minutes)</label>
@@ -404,10 +408,14 @@ function ScheduleTab({ token }) {
   async function saveMeeting(form) {
     setSaving(true)
     try {
+      const payload = {
+        ...form,
+        scheduled_at: new Date(form.scheduled_at).toISOString(),
+      }
       await fetch(`${API_BASE}/api/meetings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const res = await fetch(`${API_BASE}/api/meetings`, { headers: { Authorization: `Bearer ${token}` } })
       setMeetings(await res.json())
@@ -485,6 +493,11 @@ function MeetingCard({ meeting, onDelete }) {
         </div>
         {meeting.notes && (
           <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>📖 {meeting.notes}</div>
+        )}
+        {meeting.assignments_total > 0 && (
+          meeting.assignments_completed >= meeting.assignments_total
+            ? <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>✅ {meeting.student_name} completed their assignments</div>
+            : <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 700, marginBottom: 4 }}>⚠️ {meeting.student_name} has not finished their assignments ({meeting.assignments_completed}/{meeting.assignments_total})</div>
         )}
         {meeting.meeting_url && (
           <a href={meeting.meeting_url} target="_blank" rel="noreferrer"

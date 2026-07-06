@@ -145,7 +145,7 @@ function AnimatedRoutes() {
           <Route path="/consent" element={<RequireAuth role="student"><MinorConsent /></RequireAuth>} />
           <Route path="/tutor-consent" element={<RequireAuth role="tutor"><TutorConsent /></RequireAuth>} />
           <Route path="/tutor-survey" element={<RequireAuth role="tutor"><TutorSurveyDoneGuard><TutorSurvey /></TutorSurveyDoneGuard></RequireAuth>} />
-          <Route path="/dev" element={import.meta.env.DEV ? <DevLogin /> : <Navigate to="/" replace />} />
+          <Route path="/dev" element={<DevLogin />} />
 
           <Route path="/dashboard/admin" element={
             <RequireAuth role="admin"><AdminDashboard /></RequireAuth>

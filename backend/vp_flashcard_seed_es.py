@@ -102,6 +102,10 @@ def update_flashcard_es(db):
             print(f"[flashcard seed es] ✓ lesson_id={rec.lesson_id}")
         except Exception as e:
             db.rollback()
+            err_str = str(e)
             print(f"[flashcard seed es] ✗ lesson_id={rec.lesson_id}: {e}")
+            if "credit balance is too low" in err_str or "insufficient_quota" in err_str or "402" in err_str:
+                print("[flashcard seed es] Out of API credits — skipping remaining lessons.")
+                break
 
     print("[flashcard seed es] Done.")

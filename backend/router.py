@@ -11,7 +11,8 @@ if _BACKEND_DIR not in sys.path:
 UPLOAD_DIR = os.environ.get("VP_UPLOAD_DIR", os.path.join(_BACKEND_DIR, "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -2201,3 +2202,21 @@ def send_message(other_user_id: int, body: MessageBody, current_user: models.Use
     msg = models.ChatMessage(sender_id=current_user.id, receiver_id=other_user_id, content=body.content.strip())
     db.add(msg); db.commit(); db.refresh(msg)
     return _message_out(msg, db)
+
+
+# ── FastAPI app (uvicorn router:app or main:app both work) ────────────────────
+
+app = FastAPI(title="PeerLingo API")
+
+_origins_env = os.environ.get("VP_ALLOWED_ORIGINS", "")
+_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["http://localhost:5177"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(router)

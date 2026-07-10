@@ -2209,7 +2209,7 @@ def send_message(other_user_id: int, body: MessageBody, current_user: models.Use
 app = FastAPI(title="PeerLingo API")
 
 _origins_env = os.environ.get("VP_ALLOWED_ORIGINS", "")
-_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["http://localhost:5177"]
+_origins = [o.strip().rstrip("/") for o in _origins_env.split(",") if o.strip()] or ["http://localhost:5177"]
 
 app.add_middleware(
     CORSMiddleware,

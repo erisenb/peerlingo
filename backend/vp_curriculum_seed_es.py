@@ -2015,7 +2015,7 @@ NOTA PARA EL TUTOR: Esta es la última lección del nivel avanzado. Tómate un m
 
 def seed_curriculum_es(db) -> None:
     from sqlalchemy.orm import Session
-    import models
+    import vp_models as models
 
     for level, lessons in TRANSLATIONS.items():
         curriculum = db.query(models.VPCurriculum).filter(

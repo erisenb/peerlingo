@@ -3,7 +3,7 @@ import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
 import { useLanguage } from '../context/LanguageContext'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8003'
+const API = import.meta.env.VITE_API_BASE || ''
 
 function useWindowWidth() {
   const [w, setW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024)

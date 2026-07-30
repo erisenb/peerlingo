@@ -76,6 +76,11 @@ with database.engine.connect() as _c:
     except Exception:
         pass
     try:
+        _c.execute(text("ALTER TABLE vp_curriculum_lessons ADD COLUMN lesson_data TEXT"))
+        _c.commit()
+    except Exception:
+        pass
+    try:
         _c.execute(text("ALTER TABLE vp_meetings ADD COLUMN notes VARCHAR"))
         _c.commit()
     except Exception:
@@ -111,6 +116,13 @@ try:
         _seed_curriculum_es_fn(_seed_db)
 except Exception as _seed_err:
     print(f"[curriculum seed es] {_seed_err}")
+
+try:
+    from vp_curriculum_seed_v2 import apply_lesson_data_v2 as _apply_v2_fn
+    with database.SessionLocal() as _v2_db:
+        _apply_v2_fn(_v2_db)
+except Exception as _v2_err:
+    print(f"[curriculum seed v2] {_v2_err}")
 
 try:
     from vp_flashcard_seed_es import update_flashcard_es as _update_flashcard_es_fn
@@ -1361,6 +1373,7 @@ def get_curriculum_by_level(level: str, db: Session = Depends(get_db)):
             "title": lesson.title,
             "outline": lesson.outline,
             "outline_es": lesson.outline_es,
+            "lesson_data": lesson.lesson_data,
             "vocabulary": hw.vocabulary if hw else "[]",
             "expressions": hw.expressions if hw else "[]",
         })

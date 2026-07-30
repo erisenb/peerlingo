@@ -15,149 +15,463 @@ function useWindowWidth() {
   return w
 }
 
-function LessonCard({ lesson, lang, t, index }) {
-  const [open, setOpen] = useState(false)
-  const isMobile = useWindowWidth() < 768
+// ── Section building blocks ───────────────────────────────────────────────────
 
-  const hw = lesson.homework || {}
-  const vocab = (() => {
-    try { return JSON.parse(hw.vocabulary || '[]') } catch { return [] }
-  })()
-  const expressions = (() => {
-    try { return JSON.parse(hw.expressions || '[]') } catch { return [] }
-  })()
+function SectionBlock({ icon, title, duration, accentColor = '#008080', children }) {
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1px solid rgba(0,128,128,0.1)`,
+      borderLeft: `4px solid ${accentColor}`,
+      borderRadius: '0 12px 12px 0',
+      padding: '18px 20px',
+      marginBottom: 14,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span style={{ fontSize: 20 }}>{icon}</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
+          {duration && <div style={{ fontSize: 11, color: '#7a9cac', fontWeight: 600, marginTop: 1 }}>{duration}</div>}
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
 
+function PromptCard({ prompt }) {
+  return (
+    <div style={{ background: 'rgba(0,128,128,0.04)', border: '1px solid rgba(0,128,128,0.12)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#008080', marginBottom: 4 }}>TUTOR SAYS</div>
+      <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, fontStyle: 'italic', marginBottom: prompt.expected ? 8 : 0 }}>
+        "{prompt.tutor}"
+      </div>
+      {prompt.expected && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', marginBottom: 3 }}>STUDENT LIKELY SAYS</div>
+          <div style={{ fontSize: 13, color: '#3d6275' }}>{prompt.expected}</div>
+        </>
+      )}
+      {prompt.tip && (
+        <div style={{ marginTop: 8, fontSize: 12, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 6, padding: '5px 9px' }}>
+          💡 {prompt.tip}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VocabGrid({ words, isMobile }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
+      {words.map((w, i) => (
+        <div key={i} style={{ background: 'rgba(160,211,232,0.08)', border: '1px solid rgba(0,128,128,0.15)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16, fontWeight: 900, color: '#0f2b3d' }}>{w.word}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#FF6F61', letterSpacing: '0.02em' }}>{w.pronunciation}</span>
+          </div>
+          <div style={{ fontSize: 13, color: '#3d6275', lineHeight: 1.55, marginBottom: 6 }}>{w.definition}</div>
+          <div style={{ fontSize: 12, color: '#7a9cac', fontStyle: 'italic', marginBottom: w.visual ? 6 : 0 }}>
+            "{w.example_sentence}"
+          </div>
+          {w.visual && (
+            <div style={{ fontSize: 11, color: '#008080', background: 'rgba(0,128,128,0.06)', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>
+              🖼 {w.visual}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ConversationPrompt({ prompt, index }) {
+  return (
+    <div style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)', borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
+      <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, fontStyle: 'italic', marginBottom: 8 }}>
+        "{prompt.tutor}"
+      </div>
+      {prompt.follow_ups?.length > 0 && (
+        <div style={{ marginBottom: prompt.comparison ? 8 : 0 }}>
+          {prompt.follow_ups.map((f, j) => (
+            <div key={j} style={{ fontSize: 13, color: '#3d6275', paddingLeft: 12, borderLeft: '2px solid rgba(37,99,235,0.25)', marginBottom: 3 }}>
+              → {f}
+            </div>
+          ))}
+        </div>
+      )}
+      {prompt.comparison && (
+        <div style={{ fontSize: 12, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 6, padding: '5px 9px' }}>
+          🌎 {prompt.comparison}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Full structured lesson view ───────────────────────────────────────────────
+
+function StructuredLesson({ ld, isMobile }) {
+  return (
+    <div>
+      {/* Meta row */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {ld.theme && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.08)', borderRadius: 20, padding: '4px 12px' }}>
+            {ld.theme}
+          </span>
+        )}
+        {ld.duration_minutes && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#7a9cac', background: 'rgba(0,128,128,0.05)', borderRadius: 20, padding: '4px 12px' }}>
+            ⏱ {ld.duration_minutes} min
+          </span>
+        )}
+      </div>
+
+      {/* Learning objectives */}
+      {ld.learning_objectives?.length > 0 && (
+        <SectionBlock icon="🎯" title="Learning Objectives" accentColor="#008080">
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {ld.learning_objectives.map((obj, i) => (
+              <li key={i} style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.7, marginBottom: 3 }}>{obj}</li>
+            ))}
+          </ul>
+        </SectionBlock>
+      )}
+
+      {/* Materials */}
+      {ld.materials_needed?.length > 0 && (
+        <SectionBlock icon="📦" title="Materials Needed" accentColor="#7a9cac">
+          {ld.materials_needed.map((m, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 5 }}>
+              <span style={{ color: '#008080', fontWeight: 700, flexShrink: 0 }}>✓</span>
+              <span style={{ fontSize: 13, color: '#3d6275' }}>{m}</span>
+            </div>
+          ))}
+        </SectionBlock>
+      )}
+
+      {/* Warm-up */}
+      {ld.warm_up && (
+        <SectionBlock icon="☀️" title="Warm-Up" duration={ld.warm_up.duration} accentColor="#FF6F61">
+          {ld.warm_up.note && (
+            <div style={{ fontSize: 13, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+              {ld.warm_up.note}
+            </div>
+          )}
+          {ld.warm_up.prompts?.map((p, i) => <PromptCard key={i} prompt={p} />)}
+        </SectionBlock>
+      )}
+
+      {/* Review */}
+      {ld.review && ld.review.questions?.length > 0 && (
+        <SectionBlock icon="🔄" title="Review from Last Lesson" duration={ld.review.duration} accentColor="#7c3aed">
+          {ld.review.note && (
+            <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic', marginBottom: 10 }}>{ld.review.note}</div>
+          )}
+          <ol style={{ margin: 0, paddingLeft: 20 }}>
+            {ld.review.questions.map((q, i) => (
+              <li key={i} style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65, marginBottom: 5 }}>{q}</li>
+            ))}
+          </ol>
+        </SectionBlock>
+      )}
+      {ld.review && !ld.review.questions?.length && ld.review.note && (
+        <SectionBlock icon="🔄" title="Review" duration={ld.review.duration} accentColor="#7a9cac">
+          <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic' }}>{ld.review.note}</div>
+        </SectionBlock>
+      )}
+
+      {/* Vocabulary */}
+      {ld.vocabulary?.words?.length > 0 && (
+        <SectionBlock icon="📚" title="New Vocabulary" duration={ld.vocabulary.duration} accentColor="#008080">
+          {ld.vocabulary.teaching_method && (
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '7px 11px', marginBottom: 12 }}>
+              Method: {ld.vocabulary.teaching_method}
+            </div>
+          )}
+          <VocabGrid words={ld.vocabulary.words} isMobile={isMobile} />
+        </SectionBlock>
+      )}
+
+      {/* Grammar */}
+      {ld.grammar && (
+        <SectionBlock icon="✏️" title="Grammar in Context" duration={ld.grammar.duration} accentColor="#7c3aed">
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', marginBottom: 8 }}>{ld.grammar.concept}</div>
+          {ld.grammar.note && (
+            <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic', marginBottom: 12 }}>{ld.grammar.note}</div>
+          )}
+          {ld.grammar.examples?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Examples</div>
+              {ld.grammar.examples.map((ex, i) => (
+                <div key={i} style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, marginBottom: 4, paddingLeft: 12, borderLeft: '2px solid rgba(124,58,237,0.3)' }}>
+                  {ex}
+                </div>
+              ))}
+            </div>
+          )}
+          {ld.grammar.practice_script && (
+            <div style={{ background: 'rgba(124,58,237,0.05)', borderRadius: 10, padding: '11px 13px' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Practice Script</div>
+              <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65 }}>{ld.grammar.practice_script}</div>
+            </div>
+          )}
+        </SectionBlock>
+      )}
+
+      {/* Guided Conversation */}
+      {ld.guided_conversation && (
+        <SectionBlock icon="💬" title="Guided Conversation" duration={ld.guided_conversation.duration} accentColor="#2563eb">
+          {ld.guided_conversation.setup && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', background: 'rgba(37,99,235,0.05)', borderRadius: 8, padding: '8px 12px', borderLeft: '3px solid #2563eb', marginBottom: 12 }}>
+              Setup: {ld.guided_conversation.setup}
+            </div>
+          )}
+          {ld.guided_conversation.prompts?.map((p, i) => (
+            <ConversationPrompt key={i} prompt={p} index={i} />
+          ))}
+          {ld.guided_conversation.tips && (
+            <div style={{ fontSize: 13, color: '#3d6275', fontStyle: 'italic', padding: '9px 13px', background: 'rgba(0,128,128,0.04)', borderRadius: 8, borderLeft: '3px solid #008080' }}>
+              💡 {ld.guided_conversation.tips}
+            </div>
+          )}
+        </SectionBlock>
+      )}
+
+      {/* Activity */}
+      {ld.activity && (
+        <SectionBlock icon="🎮" title={`Activity: ${ld.activity.name}`} duration={ld.activity.duration} accentColor="#FF6F61">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: '#FF6F61', borderRadius: 20, padding: '3px 10px' }}>{ld.activity.type}</span>
+            {ld.activity.vocabulary_focus?.map((v, i) => (
+              <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#FF6F61', background: 'rgba(255,111,97,0.1)', borderRadius: 20, padding: '3px 10px' }}>{v}</span>
+            ))}
+          </div>
+          {ld.activity.setup && (
+            <div style={{ fontSize: 13, color: '#3d6275', marginBottom: 10 }}>{ld.activity.setup}</div>
+          )}
+          {ld.activity.tutor_script && (
+            <div style={{ background: 'rgba(255,111,97,0.06)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#FF6F61', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tutor Script</div>
+              <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.7 }}>{ld.activity.tutor_script}</div>
+            </div>
+          )}
+          {ld.activity.debrief && (
+            <div style={{ fontSize: 13, color: '#3d6275', fontStyle: 'italic' }}>✨ {ld.activity.debrief}</div>
+          )}
+        </SectionBlock>
+      )}
+
+      {/* Wrap-up */}
+      {ld.wrap_up && (
+        <SectionBlock icon="✅" title="Wrap-Up" duration={ld.wrap_up.duration} accentColor="#16a34a">
+          {ld.wrap_up.review_questions?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Review Questions</div>
+              {ld.wrap_up.review_questions.map((q, i) => (
+                <div key={i} style={{ fontSize: 14, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8 }}>
+                  <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
+                  <span>{q}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {ld.wrap_up.encouragement && (
+            <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, padding: '10px 13px', background: 'rgba(22,163,74,0.06)', borderRadius: 8, borderLeft: '3px solid #16a34a', marginBottom: 10 }}>
+              💚 {ld.wrap_up.encouragement}
+            </div>
+          )}
+          {ld.wrap_up.homework && (
+            <div style={{ fontSize: 14, color: '#3d6275', padding: '10px 13px', background: 'rgba(0,128,128,0.04)', borderRadius: 8 }}>
+              <span style={{ fontWeight: 700, color: '#008080' }}>Homework: </span>{ld.wrap_up.homework}
+            </div>
+          )}
+        </SectionBlock>
+      )}
+
+      {/* Tutor Notes */}
+      {ld.tutor_notes && (
+        <SectionBlock icon="📝" title="Tutor Notes" accentColor="#0f2b3d">
+          {ld.tutor_notes.common_mistakes?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Common Mistakes to Watch For</div>
+              {ld.tutor_notes.common_mistakes.map((m, i) => (
+                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: '#FF6F61', flexShrink: 0 }}>⚠</span>
+                  <span>{m}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {ld.tutor_notes.shy_student_tips?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>For Shy Students</div>
+              {ld.tutor_notes.shy_student_tips.map((t, i) => (
+                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: '#008080', flexShrink: 0 }}>→</span>
+                  <span>{t}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {ld.tutor_notes.if_struggling && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>If Student Struggles</div>
+              <div style={{ fontSize: 13, color: '#3d6275', padding: '8px 12px', background: 'rgba(37,99,235,0.05)', borderRadius: 8 }}>{ld.tutor_notes.if_struggling}</div>
+            </div>
+          )}
+          {ld.tutor_notes.alternatives?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alternative Approaches</div>
+              {ld.tutor_notes.alternatives.map((a, i) => (
+                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: '#7c3aed', flexShrink: 0 }}>•</span>
+                  <span>{a}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionBlock>
+      )}
+    </div>
+  )
+}
+
+// ── Classic lesson view (no lesson_data) ──────────────────────────────────────
+
+function ClassicLesson({ lesson, lang }) {
+  const vocab = (() => { try { return JSON.parse(lesson.vocabulary || '[]') } catch { return [] } })()
+  const expressions = (() => { try { return JSON.parse(lesson.expressions || '[]') } catch { return [] } })()
   const rawOutline = (lang === 'es' && lesson.outline_es) ? lesson.outline_es : (lesson.outline || '')
-  const outlineLines = rawOutline.split('\n')
-  const overviewStart = outlineLines.findIndex(l => l.includes('LESSON OVERVIEW'))
-  const tutorStart = outlineLines.findIndex(l => l.includes('TUTOR GUIDE'))
-  const tutorNoteStart = outlineLines.findIndex(l => l.includes('TUTOR NOTE'))
-
+  const lines = rawOutline.split('\n')
+  const overviewStart = lines.findIndex(l => l.includes('LESSON OVERVIEW'))
+  const tutorStart = lines.findIndex(l => l.includes('TUTOR GUIDE'))
   const overviewText = overviewStart !== -1
-    ? outlineLines.slice(overviewStart + 1, tutorStart !== -1 ? tutorStart : undefined).join('\n').trim()
-    : lesson.outline
+    ? lines.slice(overviewStart + 1, tutorStart !== -1 ? tutorStart : undefined).join('\n').trim()
+    : rawOutline
 
-  const tutorText = tutorStart !== -1
-    ? outlineLines.slice(tutorStart + 1, tutorNoteStart !== -1 ? tutorNoteStart : undefined).join('\n').trim()
-    : ''
+  return (
+    <div>
+      {overviewText && (
+        <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.75, whiteSpace: 'pre-wrap', marginBottom: 20 }}>{overviewText}</div>
+      )}
+      {vocab.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Vocabulary</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+            {vocab.map((v, i) => (
+              <div key={i} style={{ padding: '10px 14px', background: 'rgba(160,211,232,0.12)', border: '1px solid rgba(160,211,232,0.3)', borderRadius: 10 }}>
+                <span style={{ fontWeight: 700, color: '#0f2b3d', fontSize: 14 }}>{v.word}</span>
+                <span style={{ color: '#5a7d8c', fontSize: 13 }}> — </span>
+                <span style={{ color: '#3d6275', fontSize: 13 }}>{v.definition}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {expressions.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Expressions</div>
+          {expressions.map((e, i) => (
+            <div key={i} style={{ padding: '10px 14px', background: 'rgba(0,128,128,0.04)', border: '1px solid rgba(0,128,128,0.1)', borderRadius: 10, marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, color: '#0f2b3d', fontSize: 14 }}>"{e.expression}"</div>
+              <div style={{ color: '#3d6275', fontSize: 13, marginTop: 3 }}>{e.meaning}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
-  const tutorNote = tutorNoteStart !== -1
-    ? outlineLines.slice(tutorNoteStart).join('\n').replace('TUTOR NOTE:', '').trim()
-    : ''
+// ── Lesson card ───────────────────────────────────────────────────────────────
+
+function LessonCard({ lesson, lang, isMobile }) {
+  const [open, setOpen] = useState(false)
+
+  const ld = (() => {
+    if (!lesson.lesson_data) return null
+    try { return JSON.parse(lesson.lesson_data) } catch { return null }
+  })()
 
   return (
     <div style={{
       background: '#fff',
-      border: '1px solid rgba(0,128,128,0.13)',
+      border: `1px solid ${open ? 'rgba(0,128,128,0.25)' : 'rgba(0,128,128,0.13)'}`,
       borderRadius: 14,
       marginBottom: 10,
       overflow: 'hidden',
-      boxShadow: open ? '0 4px 20px rgba(0,128,128,0.08)' : '0 1px 4px rgba(0,128,128,0.05)',
-      transition: 'box-shadow 0.2s',
+      boxShadow: open ? '0 4px 24px rgba(0,128,128,0.1)' : '0 1px 4px rgba(0,128,128,0.05)',
+      transition: 'box-shadow 0.2s, border-color 0.2s',
     }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', textAlign: 'left', background: 'none', border: 'none',
           padding: isMobile ? '16px 18px' : '18px 24px',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
         }}
       >
         <div style={{
           width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-          background: 'rgba(0,128,128,0.1)', color: '#008080',
+          background: open ? '#008080' : 'rgba(0,128,128,0.1)',
+          color: open ? '#fff' : '#008080',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 15, fontWeight: 800,
+          transition: 'background 0.2s, color 0.2s',
         }}>
           {lesson.lesson_number}
         </div>
-        <div style={{ flex: 1 }}>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 700, color: '#0f2b3d' }}>
             {lesson.title}
           </div>
+          {ld?.theme && (
+            <div style={{ fontSize: 11, color: '#7a9cac', marginTop: 2 }}>{ld.theme}</div>
+          )}
         </div>
-        <div style={{ color: '#008080', fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-          ▾
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {ld && !isMobile && (
+            <span style={{
+              fontSize: 10, fontWeight: 800, color: '#fff',
+              background: '#FF6F61', borderRadius: 20, padding: '3px 9px',
+              letterSpacing: '0.04em',
+            }}>
+              FULL GUIDE
+            </span>
+          )}
+          <span style={{
+            color: '#008080', fontSize: 18,
+            transform: open ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s',
+            display: 'inline-block',
+          }}>▾</span>
         </div>
       </button>
 
       {open && (
-        <div style={{ padding: isMobile ? '0 18px 20px' : '0 24px 24px', borderTop: '1px solid rgba(0,128,128,0.08)' }}>
-          {/* Lesson Overview */}
-          <div style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#008080', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-              {t('curriculum.lessonOverview')}
-            </div>
-            <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
-              {overviewText}
-            </div>
-          </div>
-
-          {/* Tutor Guide */}
-          {tutorText && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#008080', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-                {t('curriculum.tutorGuide')}
-              </div>
-              <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
-                {tutorText}
-              </div>
-            </div>
-          )}
-
-          {/* Tutor Note */}
-          {tutorNote && (
-            <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,111,97,0.06)', borderLeft: '3px solid #FF6F61', borderRadius: '0 8px 8px 0' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#FF6F61' }}>Note: </span>
-              <span style={{ fontSize: 13, color: '#3d6275' }}>{tutorNote}</span>
-            </div>
-          )}
-
-          {/* Vocabulary */}
-          {vocab.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#008080', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>
-                {t('curriculum.vocabulary')}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 8 }}>
-                {vocab.map((v, i) => (
-                  <div key={i} style={{ padding: '10px 14px', background: 'rgba(160,211,232,0.12)', border: '1px solid rgba(160,211,232,0.3)', borderRadius: 10 }}>
-                    <span style={{ fontWeight: 700, color: '#0f2b3d', fontSize: 14 }}>{v.word}</span>
-                    <span style={{ color: '#5a7d8c', fontSize: 13 }}> — </span>
-                    <span style={{ color: '#3d6275', fontSize: 13 }}>{v.definition}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Expressions */}
-          {expressions.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#008080', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>
-                {t('curriculum.expressions')}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {expressions.map((e, i) => (
-                  <div key={i} style={{ padding: '10px 14px', background: 'rgba(0,128,128,0.04)', border: '1px solid rgba(0,128,128,0.1)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ fontWeight: 700, color: '#0f2b3d', fontSize: 14, flexShrink: 0 }}>"{e.expression}"</span>
-                    <span style={{ color: '#7a9cac', fontSize: 13 }}>→</span>
-                    <span style={{ color: '#3d6275', fontSize: 13 }}>{e.meaning}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Prepare note */}
-          <div style={{ marginTop: 20, fontSize: 13, color: '#7a9cac', fontStyle: 'italic' }}>
-            {t('curriculum.prepareNote')}
-          </div>
+        <div style={{ borderTop: '1px solid rgba(0,128,128,0.08)', padding: isMobile ? '18px 16px 22px' : '22px 24px 28px' }}>
+          {ld
+            ? <StructuredLesson ld={ld} isMobile={isMobile} />
+            : (
+              <>
+                <ClassicLesson lesson={lesson} lang={lang} />
+                <div style={{ marginTop: 18, padding: '11px 14px', background: 'rgba(0,128,128,0.04)', border: '1px dashed rgba(0,128,128,0.2)', borderRadius: 10, fontSize: 13, color: '#7a9cac', textAlign: 'center' }}>
+                  Full tutor guide with script, activities, and teaching notes — coming soon for this lesson.
+                </div>
+              </>
+            )
+          }
         </div>
       )}
     </div>
   )
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CurriculumPage() {
   const { t, lang } = useLanguage()
@@ -183,17 +497,31 @@ export default function CurriculumPage() {
     <div style={{ minHeight: '100vh', background: '#F1F8F9', display: 'flex', flexDirection: 'column' }}>
       <PublicNav />
 
-      <main style={{ flex: 1, maxWidth: 900, margin: '0 auto', padding: isMobile ? '40px 18px 60px' : '60px 32px 80px', width: '100%' }}>
+      <main style={{ flex: 1, maxWidth: 960, margin: '0 auto', padding: isMobile ? '40px 18px 60px' : '60px 32px 80px', width: '100%' }}>
+
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? 36 : 52 }}>
           <h1 style={{ fontSize: isMobile ? 32 : 52, fontWeight: 900, color: '#0f2b3d', margin: '0 0 14px', lineHeight: 1.15 }}>
             {lang === 'es' ? 'Currículo de Muestra' : 'Sample Curriculum'}
           </h1>
-          <p style={{ fontSize: isMobile ? 16 : 19, color: '#5a7d8c', maxWidth: 560, margin: '0 auto', lineHeight: 1.6, fontWeight: 400 }}>
+          <p style={{ fontSize: isMobile ? 15 : 18, color: '#5a7d8c', maxWidth: 580, margin: '0 auto 20px', lineHeight: 1.6 }}>
             {lang === 'es'
-              ? 'Los estudiantes aprenden vocabulario y frases clave antes de sus sesiones de tutoría guiadas.'
-              : 'Students learn vocab and key phrases in advance of their guided tutoring sessions.'}
+              ? 'Cada lección incluye una guía completa para el tutor, vocabulario, actividades y notas de enseñanza.'
+              : 'Each lesson includes a complete tutor script, vocabulary cards, conversation prompts, activities, and teaching notes.'}
           </p>
+          <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[
+              { icon: '📋', label: 'Tutor Script' },
+              { icon: '📚', label: 'Vocabulary' },
+              { icon: '💬', label: 'Conversation Prompts' },
+              { icon: '🎮', label: 'Activities' },
+              { icon: '📝', label: 'Teaching Notes' },
+            ].map(({ icon, label }) => (
+              <div key={label} style={{ fontSize: 12, fontWeight: 700, color: '#3d6275', background: '#fff', border: '1px solid rgba(0,128,128,0.2)', borderRadius: 20, padding: '5px 12px' }}>
+                {icon} {label}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Level toggle */}
@@ -205,7 +533,7 @@ export default function CurriculumPage() {
                 color: level === lvl ? '#fff' : '#7a9cac',
                 border: 'none', borderRadius: 13,
                 padding: isMobile ? '12px 20px' : '15px 36px',
-                fontSize: isMobile ? 13 : 16, fontWeight: 800,
+                fontSize: isMobile ? 13 : 15, fontWeight: 800,
                 cursor: 'pointer', transition: 'all 0.2s',
                 boxShadow: level === lvl ? '0 4px 20px rgba(255,111,97,0.4)' : 'none',
               }}>
@@ -232,16 +560,17 @@ export default function CurriculumPage() {
           <>
             <div style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#0f2b3d', marginBottom: 6 }}>
-                {data.title}
+                {data.curriculum?.title}
               </h2>
-              {data.description && (
-                <p style={{ color: '#5a7d8c', fontSize: 15, margin: 0, lineHeight: 1.6 }}>{data.description}</p>
+              {data.curriculum?.description && (
+                <p style={{ color: '#5a7d8c', fontSize: 15, margin: 0, lineHeight: 1.6 }}>
+                  {data.curriculum.description}
+                </p>
               )}
             </div>
-
             <div>
-              {(data.lessons || []).map((lesson, i) => (
-                <LessonCard key={lesson.id} lesson={lesson} lang={lang} t={t} index={i} />
+              {(data.lessons || []).map(lesson => (
+                <LessonCard key={lesson.id} lesson={lesson} lang={lang} isMobile={isMobile} />
               ))}
             </div>
           </>

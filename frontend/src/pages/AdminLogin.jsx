@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { API_BASE } from '../api'
 
@@ -114,6 +114,14 @@ export default function AdminLogin() {
           </div>
 
           {error && <div style={{ color: '#f87171', fontSize: 13, textAlign: 'center' }}>{error}</div>}
+
+          {mode === 'login' && (
+            <div style={{ textAlign: 'right', marginTop: -8 }}>
+              <Link to="/forgot-password" style={{ fontSize: 12, color: '#4ade80', textDecoration: 'none', opacity: 0.8 }}>
+                Forgot password?
+              </Link>
+            </div>
+          )}
 
           <button
             type="submit" disabled={loading}

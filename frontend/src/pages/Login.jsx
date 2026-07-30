@@ -31,6 +31,20 @@ export default function Login() {
     navigate(user.role === 'admin' ? '/dashboard/admin' : user.role === 'tutor' ? tutorDest(user) : studentDest)
   }
 
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const user = await login(email, password)
+      navigateUser(user)
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleSocialResponse(data) {
     if (!data.access_token) { setError('Sign-in failed. Please try again.'); return }
     const { login: loginFn } = { login }

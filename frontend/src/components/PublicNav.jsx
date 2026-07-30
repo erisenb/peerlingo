@@ -126,7 +126,7 @@ export default function PublicNav({ transparent = false }) {
             ) : (
               <button onClick={() => navigate('/login')}
                 style={{ background: '#FF6F61', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-              >Sign In</button>
+              >{t('nav.signIn')}</button>
             )}
           </div>
         )}
@@ -158,7 +158,7 @@ export default function PublicNav({ transparent = false }) {
                 <button onClick={() => { logout(); setMenuOpen(false); navigate('/') }} style={{ width: '100%', background: 'rgba(255,111,97,0.1)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.3)', borderRadius: 10, padding: '11px 8px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Log Out</button>
               </>
             ) : (
-              <button onClick={() => { navigate('/login'); setMenuOpen(false) }} style={{ width: '100%', background: '#FF6F61', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 8px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Sign In</button>
+              <button onClick={() => { navigate('/login'); setMenuOpen(false) }} style={{ width: '100%', background: '#FF6F61', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 8px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('nav.signIn')}</button>
             )}
           </div>
         </div>

@@ -94,6 +94,7 @@ const translations = {
     'about.langToggle': 'Español',
 
     // Nav
+    'nav.signIn': 'Sign In',
     'nav.signOut': 'Sign Out',
     'nav.profile': 'Profile',
 
@@ -298,6 +299,7 @@ const translations = {
     'about.langToggle': 'English',
 
     // Nav
+    'nav.signIn': 'Iniciar sesión',
     'nav.signOut': 'Cerrar sesión',
     'nav.profile': 'Perfil',
 

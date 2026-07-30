@@ -817,7 +817,7 @@ def _send_reset_email(to_email: str, full_name: str, reset_url: str) -> None:
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 _admin_emails_env = os.environ.get("VP_ADMIN_EMAILS", "")
-ADMIN_GMAIL_WHITELIST = {e.strip().lower() for e in _admin_emails_env.split(",") if e.strip()}
+ADMIN_EMAIL_WHITELIST = {e.strip().lower() for e in _admin_emails_env.split(",") if e.strip()}
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID", "")
@@ -834,7 +834,7 @@ class AppleOAuthRequest(BaseModel):
 @router.post("/api/auth/register", response_model=AuthResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     email_lower = req.email.lower()
-    if req.role == models.UserRole.admin and email_lower.endswith("@gmail.com") and email_lower not in ADMIN_GMAIL_WHITELIST:
+    if req.role == models.UserRole.admin and ADMIN_EMAIL_WHITELIST and email_lower not in ADMIN_EMAIL_WHITELIST:
         raise HTTPException(status_code=403, detail="This email is not authorized to create an admin account")
     existing = db.query(models.User).filter(models.User.email == req.email).first()
     if existing:
@@ -1091,7 +1091,7 @@ def google_auth(req: GoogleOAuthRequest, db: Session = Depends(get_db)):
         return JSONResponse({"needs_role": True, "email": email, "full_name": full_name})
 
     gmail_lower = email.lower()
-    if req.role == models.UserRole.admin and gmail_lower.endswith("@gmail.com") and gmail_lower not in ADMIN_GMAIL_WHITELIST:
+    if req.role == models.UserRole.admin and ADMIN_EMAIL_WHITELIST and gmail_lower not in ADMIN_EMAIL_WHITELIST:
         raise HTTPException(status_code=403, detail="Not authorized to create an admin account")
 
     new_user = models.User(

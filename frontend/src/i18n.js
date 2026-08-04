@@ -277,7 +277,7 @@ const translations = {
     'hiw.cta.mentor': 'Únete como tutor',
     'hiw.cta.student': 'Únete como estudiante',
     'login.subtitle': 'Inicia sesión para continuar',
-    'login.orEmail': 'o continúa con tu correo',
+    'login.orEmail': 'o inicia sesión abajo',
     'login.appleBtn': 'Continuar con Apple',
     'login.noAccount': '¿Nuevo aquí?',
     'login.volunteer': 'Regístrate como voluntario',
@@ -306,12 +306,12 @@ const translations = {
     // Login
     'login.title': 'Bienvenido',
     'login.subtitle': 'Inicia sesión en tu cuenta',
-    'login.email': 'Correo o nombre de usuario',
+    'login.email': 'Nombre de usuario',
     'login.password': 'Contraseña',
     'login.submit': 'Iniciar sesión',
     'login.noAccount': '¿No tienes una cuenta?',
     'login.register': 'Registrarse',
-    'login.error': 'Correo o contraseña incorrectos',
+    'login.error': 'Nombre de usuario o contraseña incorrectos',
 
     // Register
     'register.title': 'Únete a PeerLingo',

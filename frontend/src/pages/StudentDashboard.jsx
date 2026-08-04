@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import PublicNav from '../components/PublicNav'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -129,6 +129,72 @@ function TutorCard({ token }) {
   )
 }
 
+// ── Assessment banner ─────────────────────────────────────────────────────────
+
+function AssessmentBanner({ token }) {
+  const [assessment, setAssessment] = useState(undefined)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/assessment/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { completed: false })
+      .then(setAssessment)
+      .catch(() => setAssessment({ completed: false }))
+  }, [token])
+
+  // undefined = still loading, don't flash anything
+  if (assessment === undefined) return null
+
+  if (assessment.completed) {
+    const LEVEL_COLORS = {
+      'Beginner A': '#15803d', 'Beginner B': '#0369a1',
+      'Elementary': '#d97706', 'Pre-Intermediate': '#7c3aed', 'Intermediate': '#FF6F61',
+    }
+    const color = LEVEL_COLORS[assessment.placement_level] || '#008080'
+    return (
+      <div style={{
+        background: '#fff', borderRadius: 16, padding: '14px 18px',
+        border: `2px solid ${color}30`,
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <span style={{ fontSize: 24 }}>🎓</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color, marginBottom: 2 }}>
+            Nivel: {assessment.placement_level}
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Evaluación de inglés completada</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
+      borderRadius: 20, padding: '20px 22px', color: '#fff',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{ fontSize: 36 }}>🎯</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>
+            ¡Completa tu evaluación de inglés!
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 14, lineHeight: 1.5 }}>
+            Tarda ~15 minutos. Ayuda a tu tutor a preparar las mejores sesiones para ti.
+            <br /><em style={{ opacity: 0.8 }}>Takes ~15 min. Helps your tutor prepare sessions for you.</em>
+          </div>
+          <Link to="/assessment" style={{
+            display: 'inline-block', background: '#fff',
+            color: '#FF6F61', borderRadius: 10, padding: '9px 18px',
+            fontSize: 14, fontWeight: 800, textDecoration: 'none',
+          }}>
+            Comenzar evaluación →
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Inicio (Home) tab ─────────────────────────────────────────────────────────
 
 function InicioTab({ user, meetings, assignments, onTabChange, token }) {
@@ -149,6 +215,9 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Assessment banner */}
+      <AssessmentBanner token={token} />
+
       {/* Greeting */}
       <div style={{
         background: `linear-gradient(135deg, ${AMBER}, #ff9b91)`,

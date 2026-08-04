@@ -30,6 +30,7 @@ import TutorConsent from './pages/TutorConsent'
 import TutorSurvey from './pages/TutorSurvey'
 import { needsMinorConsent } from './utils/age'
 import CurriculumPage from './pages/CurriculumPage'
+import AssessmentPage from './pages/AssessmentPage'
 import WordBackground from './components/WordBackground'
 import PageArrows from './components/PageArrows'
 
@@ -162,6 +163,9 @@ function AnimatedRoutes() {
 
           <Route path="/dashboard/student" element={
             <SurveyGuard><ConsentGuard><RequireAuth role="student"><StudentDashboard /></RequireAuth></ConsentGuard></SurveyGuard>
+          } />
+          <Route path="/assessment" element={
+            <SurveyGuard><ConsentGuard><RequireAuth role="student"><AssessmentPage /></RequireAuth></ConsentGuard></SurveyGuard>
           } />
           <Route path="/student" element={<Navigate to="/dashboard/student" replace />} />
           <Route path="/dashboard/student/lesson/:id" element={

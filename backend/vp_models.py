@@ -227,3 +227,19 @@ class StudentCurriculum(Base):
     lesson_id = Column(Integer, ForeignKey("vp_curriculum_lessons.id"), nullable=False)
     order_index = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class VPPlacementAssessment(Base):
+    __tablename__ = "vp_placement_assessments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False, unique=True)
+    completed = Column(Boolean, default=False, nullable=False)
+    answers = Column(String, nullable=True)         # JSON: all submitted answers
+    vocab_score = Column(Integer, nullable=True)    # 0–6
+    reading_score = Column(Integer, nullable=True)  # 0–8
+    grammar_score = Column(Integer, nullable=True)  # 0–5
+    total_score = Column(Integer, nullable=True)    # 0–19
+    placement_level = Column(String, nullable=True) # Beginner A/B, Elementary, Pre-Intermediate, Intermediate
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -731,6 +731,7 @@ function MyStudentsTab({ token }) {
   const [saving, setSaving] = useState(false)
   const [studentCurriculum, setStudentCurriculum] = useState([])
   const [curriculumLoading, setCurriculumLoading] = useState(false)
+  const [placement, setPlacement] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -741,10 +742,15 @@ function MyStudentsTab({ token }) {
   }, [])
 
   useEffect(() => {
-    if (!selected) { setStudentCurriculum([]); return }
+    if (!selected) { setStudentCurriculum([]); setPlacement(null); return }
     setCurriculumLoading(true)
-    fetch(`${API_BASE}/api/students/${selected.id}/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : []).then(setStudentCurriculum).finally(() => setCurriculumLoading(false))
+    Promise.all([
+      fetch(`${API_BASE}/api/students/${selected.id}/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/api/assessment/student/${selected.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([curr, place]) => { setStudentCurriculum(curr); setPlacement(place) })
+      .finally(() => setCurriculumLoading(false))
   }, [selected])
 
   async function assignLesson(dueDate) {
@@ -897,6 +903,52 @@ function MyStudentsTab({ token }) {
           </p>
         )}
       </div>
+
+      {/* Placement assessment results */}
+      {placement && (
+        <div style={{ marginBottom: 26 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>🎓 Placement Assessment</h3>
+          {placement.completed ? (() => {
+            const LEVEL_COLORS = {
+              'Beginner A': { color: '#15803d', bg: '#dcfce7' },
+              'Beginner B': { color: '#0369a1', bg: '#dbeafe' },
+              'Elementary': { color: '#d97706', bg: '#fef3c7' },
+              'Pre-Intermediate': { color: '#7c3aed', bg: '#f5f3ff' },
+              'Intermediate': { color: '#FF6F61', bg: 'rgba(255,111,97,0.1)' },
+            }
+            const lc = LEVEL_COLORS[placement.placement_level] || { color: '#008080', bg: 'rgba(0,128,128,0.1)' }
+            return (
+              <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: `2px solid ${lc.bg}`, boxShadow: '0 2px 8px rgba(0,128,128,0.07)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <span style={{ background: lc.bg, color: lc.color, borderRadius: 20, padding: '4px 14px', fontSize: 14, fontWeight: 800 }}>
+                    {placement.placement_level}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                    Score: {placement.total_score}/19
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                    📝 Vocab: {placement.vocab_score}/6
+                  </div>
+                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                    📖 Reading: {placement.reading_score}/8
+                  </div>
+                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: '8px 14px', fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                    ✍️ Grammar: {placement.grammar_score}/5
+                  </div>
+                </div>
+              </div>
+            )
+          })() : (
+            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', border: '1.5px dashed #cbd5e1' }}>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
+                This student hasn't completed their placement assessment yet.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Curriculum & assignment status */}
       <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>Curriculum</h3>

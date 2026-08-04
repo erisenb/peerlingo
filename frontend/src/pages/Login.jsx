@@ -166,7 +166,12 @@ export default function Login() {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={labelStyle}>{t('login.email')}</label>
-                <input type="text" value={email} onChange={e => setEmail(e.target.value)} required placeholder={isEs ? 'tu@correo.com o nombre.usuario' : 'your@email.com or username'} style={inputStyle} />
+                <input type="text" value={email} onChange={e => setEmail(e.target.value)} required placeholder={isEs ? 'Ej: maria.perez123' : 'your@email.com or username'} style={inputStyle} />
+                {isEs && (
+                  <p style={{ fontSize: 11, color: '#7a9cac', margin: '5px 0 0', lineHeight: 1.4 }}>
+                    Tu nombre de usuario te fue dado cuando creaste tu cuenta.
+                  </p>
+                )}
               </div>
               <div>
                 <label style={labelStyle}>{t('login.password')}</label>

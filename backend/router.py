@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import sys
@@ -849,6 +850,10 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
                        minor_consent_version=req.minor_consent_version if req.minor_consent_version else None,
                        minor_consent_accepted_at=now if req.minor_consent_version else None)
     db.add(user); db.commit(); db.refresh(user)
+    if req.role == models.UserRole.student:
+        assessment = models.VPPlacementAssessment(student_id=user.id)
+        db.add(assessment)
+        db.commit()
     return AuthResponse(access_token=create_access_token(user.id),
                         token_type="bearer", user=_user_out(user))
 
@@ -2166,6 +2171,88 @@ def get_admin_stats(current_user: models.User = Depends(get_current_user), db: S
         "meetings":    db.query(models.Meeting).count(),
         "completions": db.query(models.AssignmentCompletion).count(),
     }
+
+
+# ── Placement Assessment ──────────────────────────────────────────────────────
+
+_PLACEMENT_ANSWERS = {
+    'vocab_q1': 'a', 'vocab_q2': 'b', 'vocab_q3': 'c',
+    'vocab_q4': 'b', 'vocab_q5': 'c', 'vocab_q6': 'd',
+    'read_q1': 'b', 'read_q2': 'b', 'read_q3': 'd', 'read_q4': 'b',
+    'read_q5': 'b', 'read_q6': 'd', 'read_q7': 'c', 'read_q8': 'c',
+    'gram_q1': 'a', 'gram_q2': 'b', 'gram_q3': 'c', 'gram_q4': 'b', 'gram_q5': 'c',
+}
+
+def _score_placement(answers: dict) -> dict:
+    vocab_score = sum(1 for k in [f'vocab_q{i}' for i in range(1, 7)]
+                      if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
+    reading_score = sum(1 for k in [f'read_q{i}' for i in range(1, 9)]
+                        if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
+    grammar_score = sum(1 for k in [f'gram_q{i}' for i in range(1, 6)]
+                        if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
+    total = vocab_score + reading_score + grammar_score
+    if total <= 3:   level = "Beginner A"
+    elif total <= 7: level = "Beginner B"
+    elif total <= 11: level = "Elementary"
+    elif total <= 15: level = "Pre-Intermediate"
+    else:            level = "Intermediate"
+    return dict(vocab_score=vocab_score, reading_score=reading_score,
+                grammar_score=grammar_score, total_score=total, placement_level=level)
+
+
+def _assessment_out(a: models.VPPlacementAssessment) -> dict:
+    return {
+        "id": a.id, "completed": a.completed,
+        "placement_level": a.placement_level,
+        "vocab_score": a.vocab_score, "reading_score": a.reading_score,
+        "grammar_score": a.grammar_score, "total_score": a.total_score,
+        "completed_at": a.completed_at.isoformat() if a.completed_at else None,
+    }
+
+
+@router.get("/api/assessment/mine")
+def get_my_assessment(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_student(current_user)
+    a = db.query(models.VPPlacementAssessment).filter_by(student_id=current_user.id).first()
+    if not a:
+        a = models.VPPlacementAssessment(student_id=current_user.id)
+        db.add(a)
+        db.commit()
+        db.refresh(a)
+    return _assessment_out(a)
+
+
+@router.post("/api/assessment/submit")
+def submit_assessment(body: dict, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_student(current_user)
+    a = db.query(models.VPPlacementAssessment).filter_by(student_id=current_user.id).first()
+    if not a:
+        a = models.VPPlacementAssessment(student_id=current_user.id)
+        db.add(a)
+    if a.completed:
+        raise HTTPException(status_code=400, detail="Assessment already submitted")
+    answers = body.get("answers", {})
+    scores = _score_placement(answers)
+    a.answers = json.dumps(answers)
+    a.vocab_score = scores["vocab_score"]
+    a.reading_score = scores["reading_score"]
+    a.grammar_score = scores["grammar_score"]
+    a.total_score = scores["total_score"]
+    a.placement_level = scores["placement_level"]
+    a.completed = True
+    a.completed_at = datetime.utcnow()
+    db.commit()
+    return scores
+
+
+@router.get("/api/assessment/student/{student_id}")
+def get_student_assessment(student_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in (models.UserRole.tutor, models.UserRole.admin):
+        raise HTTPException(status_code=403, detail="Access denied")
+    a = db.query(models.VPPlacementAssessment).filter_by(student_id=student_id).first()
+    if not a:
+        return {"completed": False, "placement_level": None, "total_score": None}
+    return _assessment_out(a)
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────

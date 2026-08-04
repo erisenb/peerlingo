@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [token, setToken] = useState(() => localStorage.getItem('vp_token'))
+  const [token, setToken] = useState(() => sessionStorage.getItem('vp_token'))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(data => setUser(data))
       .catch(() => {
-        localStorage.removeItem('vp_token')
+        sessionStorage.removeItem('vp_token')
         setToken(null)
       })
       .finally(() => setLoading(false))
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   async function login(emailOrToken, passwordOrUser) {
     // Overload: login(token, userObj) — used by AdminLogin after manual fetch
     if (passwordOrUser && typeof passwordOrUser === 'object') {
-      localStorage.setItem('vp_token', emailOrToken)
+      sessionStorage.setItem('vp_token', emailOrToken)
       setToken(emailOrToken)
       setUser(passwordOrUser)
       return passwordOrUser
@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
       throw new Error(err.detail || 'Login failed')
     }
     const data = await res.json()
-    localStorage.setItem('vp_token', data.access_token)
+    sessionStorage.setItem('vp_token', data.access_token)
     setToken(data.access_token)
     setUser(data.user)
     return data.user
@@ -61,7 +61,7 @@ export function AuthProvider({ children }) {
       throw new Error(err.detail || 'Registration failed')
     }
     const data = await res.json()
-    localStorage.setItem('vp_token', data.access_token)
+    sessionStorage.setItem('vp_token', data.access_token)
     setToken(data.access_token)
     setUser(data.user)
     return data.user
@@ -76,13 +76,13 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    const demoEmail = localStorage.getItem('vp_demo_email')
+    const demoEmail = sessionStorage.getItem('vp_demo_email')
     if (demoEmail) {
       fetch(`${API_BASE}/api/dev/reset-account?email=${encodeURIComponent(demoEmail)}`, { method: 'POST' })
         .catch(() => {})
-      localStorage.removeItem('vp_demo_email')
+      sessionStorage.removeItem('vp_demo_email')
     }
-    localStorage.removeItem('vp_token')
+    sessionStorage.removeItem('vp_token')
     setToken(null)
     setUser(null)
   }

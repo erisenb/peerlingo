@@ -38,21 +38,21 @@ const READ_BASIC = [
     sentence: '"I have two brothers."',
     question_es: '¿Cuántos hermanos tiene?',
     question_en: 'How many brothers?',
-    choices: [['a','Uno / One'],['b','Dos / Two'],['c','Tres / Three'],['d','Cuatro / Four']],
+    choices: [['a','Uno'],['b','Dos'],['c','Tres'],['d','Cuatro']],
   },
   {
     key: 'read_q3',
     sentence: '"The dog is sleeping."',
     question_es: '¿Qué está haciendo el perro?',
     question_en: 'What is the dog doing?',
-    choices: [['a','Corriendo / Running'],['b','Comiendo / Eating'],['c','Jugando / Playing'],['d','Durmiendo / Sleeping']],
+    choices: [['a','Corriendo'],['b','Comiendo'],['c','Jugando'],['d','Durmiendo']],
   },
   {
     key: 'read_q4',
     sentence: '"She drinks water every morning."',
     question_es: '¿Qué bebe ella cada mañana?',
     question_en: 'What does she drink every morning?',
-    choices: [['a','Jugo / Juice'],['b','Agua / Water'],['c','Leche / Milk'],['d','Café / Coffee']],
+    choices: [['a','Jugo'],['b','Agua'],['c','Leche'],['d','Café']],
   },
 ]
 
@@ -76,13 +76,13 @@ const READ_COMP = [
     key: 'read_q7',
     question_es: '¿Qué le gusta hacer?',
     question_en: 'What does she like to do?',
-    choices: [['a','Cocinar / Cooking'],['b','Nadar / Swimming'],['c','Leer y fútbol / Reading & soccer'],['d','Bailar / Dancing']],
+    choices: [['a','Cocinar'],['b','Nadar'],['c','Leer y jugar fútbol'],['d','Bailar']],
   },
   {
     key: 'read_q8',
     question_es: '¿Cuándo va a la escuela?',
     question_en: 'When does she go to school?',
-    choices: [['a','Los fines de semana / Weekends'],['b','A veces / Sometimes'],['c','Todos los días / Every day'],['d','Nunca / Never']],
+    choices: [['a','Los fines de semana'],['b','A veces'],['c','Todos los días'],['d','Nunca']],
   },
 ]
 

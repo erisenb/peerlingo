@@ -294,13 +294,15 @@ export default function Register() {
                   <input value={school} onChange={e => setSchool(e.target.value)} placeholder="Your high school in NJ" style={inputStyle} />
                 </div>
               )}
-              <div>
-                <label style={labelStyle}>{isStudent && isEs ? 'Grado' : 'Grade'}</label>
-                <select value={grade} onChange={e => setGrade(e.target.value)} style={inputStyle}>
-                  <option value="" style={{ color: '#111', background: '#fff' }}>{isEs ? '— Selecciona tu grado —' : '— Select your grade —'}</option>
-                  {(isStudent ? STUDENT_GRADES : TUTOR_GRADES).map(g => <option key={g} value={g} style={{ color: '#111', background: '#fff' }}>{g}</option>)}
-                </select>
-              </div>
+              {!isStudent && (
+                <div>
+                  <label style={labelStyle}>Grade</label>
+                  <select value={grade} onChange={e => setGrade(e.target.value)} style={inputStyle}>
+                    <option value="" style={{ color: '#111', background: '#fff' }}>— Select your grade —</option>
+                    {TUTOR_GRADES.map(g => <option key={g} value={g} style={{ color: '#111', background: '#fff' }}>{g}</option>)}
+                  </select>
+                </div>
+              )}
 
               {isStudent && (
                 <div style={{ marginTop: 6 }}>

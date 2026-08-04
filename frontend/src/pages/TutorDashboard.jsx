@@ -703,6 +703,26 @@ function DueDateModal({ lesson, totalLessons, nextLessonTitle, studentName, onSa
 
 // ── My Students tab ───────────────────────────────────────────────────────────
 
+function calcAge(dobStr) {
+  if (!dobStr) return null
+  const dob = new Date(dobStr)
+  const today = new Date()
+  let age = today.getFullYear() - dob.getFullYear()
+  const m = today.getMonth() - dob.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+  return age > 0 ? age : null
+}
+
+function ProfileRow({ label, value }) {
+  if (!value) return null
+  return (
+    <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 14px' }}>
+      <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{value}</div>
+    </div>
+  )
+}
+
 function StudentAvatar({ student, size = 52 }) {
   const [err, setErr] = useState(false)
   if (student.has_photo && !err) {
@@ -863,44 +883,69 @@ function MyStudentsTab({ token }) {
         background: '#fff', borderRadius: 18, padding: '24px 26px',
         border: '1px solid rgba(0,128,128,0.25)', boxShadow: '0 2px 12px rgba(0,128,128,0.08)', marginBottom: 26,
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
+        {/* Header: avatar + name */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, marginBottom: 20 }}>
           <StudentAvatar student={selected} size={68} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 900, color: '#1e293b' }}>{selected.full_name}</div>
             <div style={{ fontSize: 13, color: '#64748b', marginTop: 3 }}>
-              {[selected.grade && `Grade ${selected.grade}`, selected.school].filter(Boolean).join(' · ')}
+              {[selected.city, selected.country].filter(Boolean).join(', ') || 'Peru'}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
               {selected.english_level && (
                 <span style={badge('rgba(0,128,128,0.1)', '#008080')}>
                   {selected.english_level.charAt(0).toUpperCase() + selected.english_level.slice(1)} English
                 </span>
               )}
-              {selected.preferred_focus && <span style={badge('#f3f4f6', '#374151')}>Focus: {selected.preferred_focus}</span>}
-              {(selected.city || selected.country) && (
-                <span style={badge('#f0fdf4', '#15803d')}>
-                  📍 {[selected.city, selected.country].filter(Boolean).join(', ')}
+              {selected.preferred_focus && (
+                <span style={badge('#f3f4f6', '#374151')}>
+                  {selected.preferred_focus === 'english' ? '🗣️ Learn English'
+                   : selected.preferred_focus === 'culture' ? '🇺🇸 American Culture'
+                   : '✨ English + Culture'}
                 </span>
               )}
             </div>
           </div>
         </div>
-        {selected.goals && (
-          <div style={{ marginTop: 18, background: 'rgba(0,128,128,0.05)', borderRadius: 12, padding: '14px 18px' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Goals</div>
-            <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, margin: 0 }}>{selected.goals}</p>
+
+        {/* Survey details grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginBottom: 18 }}>
+          <ProfileRow label="Age" value={calcAge(selected.date_of_birth) ? `${calcAge(selected.date_of_birth)} years old` : null} />
+          <ProfileRow label="Country" value={selected.country} />
+          <ProfileRow label="City" value={selected.city} />
+          <ProfileRow label="School" value={selected.school} />
+          <ProfileRow label="English Level" value={selected.english_level ? selected.english_level.charAt(0).toUpperCase() + selected.english_level.slice(1) : null} />
+          <ProfileRow label="Tutor Preference"
+            value={
+              selected.preferred_tutor_gender === 'male' ? 'Male tutor'
+              : selected.preferred_tutor_gender === 'female' ? 'Female tutor'
+              : selected.preferred_tutor_gender === 'no_preference' ? 'No preference'
+              : null
+            }
+          />
+        </div>
+
+        {/* Goals / Motivation — the student's "meta" */}
+        {selected.goals ? (
+          <div style={{ background: 'rgba(0,128,128,0.05)', borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+              🎯 Goals & Motivation
+            </div>
+            <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.75, margin: 0 }}>{selected.goals}</p>
+          </div>
+        ) : (
+          <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 18px', border: '1.5px dashed #e2e8f0' }}>
+            <p style={{ fontSize: 13, color: '#94a3b8', margin: 0, fontStyle: 'italic' }}>
+              This student hasn't completed their profile survey yet.
+            </p>
           </div>
         )}
+
         {selected.bio && (
           <div style={{ marginTop: 12, background: 'rgba(255,111,97,0.06)', borderRadius: 12, padding: '14px 18px' }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#FF6F61', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>About</div>
             <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, margin: 0 }}>{selected.bio}</p>
           </div>
-        )}
-        {!selected.goals && !selected.bio && (
-          <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 14, fontStyle: 'italic' }}>
-            This student hasn't filled out their profile yet.
-          </p>
         )}
       </div>
 

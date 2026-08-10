@@ -960,7 +960,7 @@ def _apply_dev_baseline(user: models.User, baseline: dict) -> None:
 
 
 def _dev_allowed():
-    if os.environ.get("ENABLE_DEV_ROUTES"):
+    if os.environ.get("VP_DEV"):
         return True
     if not os.environ.get("VP_SECRET_KEY"):
         return True

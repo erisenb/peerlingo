@@ -91,6 +91,22 @@ with database.engine.connect() as _c:
         _c.commit()
     except Exception:
         pass
+    try:
+        _c.execute(text("""
+            CREATE TABLE IF NOT EXISTS vp_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tutor_id INTEGER NOT NULL REFERENCES vp_users(id),
+                student_id INTEGER NOT NULL REFERENCES vp_users(id),
+                lesson_id INTEGER NOT NULL REFERENCES vp_curriculum_lessons(id),
+                current_step INTEGER NOT NULL DEFAULT 0,
+                completed BOOLEAN NOT NULL DEFAULT 0,
+                started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                completed_at DATETIME
+            )
+        """))
+        _c.commit()
+    except Exception:
+        pass
     # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
     try:
         _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
@@ -1440,9 +1456,7 @@ def get_curriculum_by_level(level: str, db: Session = Depends(get_db)):
 @router.get("/api/curriculum/mine")
 def get_my_curriculum(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     _require_student(current_user)
-    progress = db.query(models.VPStudentProgress).filter(
-        models.VPStudentProgress.student_id == current_user.id
-    ).first()
+    progress = _get_active_progress(current_user, db)
     if not progress:
         return {"enrolled": False}
     curriculum = db.query(models.VPCurriculum).filter(
@@ -1480,9 +1494,7 @@ def get_my_curriculum(current_user: models.User = Depends(get_current_user), db:
 @router.post("/api/curriculum/advance")
 def advance_lesson(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     _require_student(current_user)
-    progress = db.query(models.VPStudentProgress).filter(
-        models.VPStudentProgress.student_id == current_user.id
-    ).first()
+    progress = _get_active_progress(current_user, db)
     if not progress:
         raise HTTPException(status_code=404, detail="No curriculum enrolled")
     total = db.query(models.VPCurriculumLesson).filter(
@@ -2137,6 +2149,73 @@ def delete_meeting(meeting_id: int, current_user: models.User = Depends(get_curr
     db.delete(m); db.commit()
 
 
+# ── Curriculum enrollment helper ───────────────────────────────────────────────
+
+def _ensure_student_enrolled(student: models.User, db: Session) -> None:
+    """Enroll student in the curriculum matching their english_level if not already enrolled."""
+    if not student.english_level:
+        return
+    curriculum = db.query(models.VPCurriculum).filter(
+        models.VPCurriculum.level == student.english_level.lower()
+    ).first()
+    if not curriculum:
+        return
+    existing = db.query(models.VPStudentProgress).filter_by(
+        student_id=student.id, curriculum_id=curriculum.id
+    ).first()
+    if not existing:
+        db.add(models.VPStudentProgress(
+            student_id=student.id,
+            curriculum_id=curriculum.id,
+            current_lesson_number=1,
+        ))
+        db.commit()
+
+
+def _get_active_progress(student: models.User, db: Session):
+    """Return the student's progress row for their CURRENT level's curriculum.
+
+    A student may have older progress rows from a previous level (kept as
+    history, never deleted) — always resolve to the row matching their
+    present english_level so a level change doesn't surface stale progress.
+    """
+    if student.english_level:
+        curriculum = db.query(models.VPCurriculum).filter(
+            models.VPCurriculum.level == student.english_level.lower()
+        ).first()
+        if curriculum:
+            match = db.query(models.VPStudentProgress).filter_by(
+                student_id=student.id, curriculum_id=curriculum.id
+            ).first()
+            if match:
+                return match
+    return db.query(models.VPStudentProgress).filter_by(
+        student_id=student.id
+    ).order_by(models.VPStudentProgress.started_at.desc()).first()
+
+
+class LevelBody(BaseModel):
+    level: str
+
+
+@router.patch("/api/admin/students/{student_id}/level")
+def admin_set_student_level(student_id: int, body: LevelBody,
+                            current_user: models.User = Depends(get_current_user),
+                            db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    if body.level not in ('beginner', 'intermediate', 'advanced'):
+        raise HTTPException(status_code=400, detail="level must be beginner, intermediate, or advanced")
+    student = db.query(models.User).filter_by(id=student_id, role=models.UserRole.student).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    student.english_level = body.level
+    db.commit()
+    # Enroll in the matching curriculum; progress from a prior level is kept as history, not deleted.
+    _ensure_student_enrolled(student, db)
+    db.refresh(student)
+    return _user_out(student)
+
+
 # ── Pairings ──────────────────────────────────────────────────────────────────
 
 def _pairing_out(p: models.TutorStudentPairing, db: Session) -> PairingOut:
@@ -2167,6 +2246,9 @@ def create_pairing(body: PairingBody, current_user: models.User = Depends(get_cu
         raise HTTPException(status_code=400, detail="This pairing already exists")
     pairing = models.TutorStudentPairing(tutor_id=body.tutor_id, student_id=body.student_id)
     db.add(pairing); db.commit(); db.refresh(pairing)
+    student = db.query(models.User).filter_by(id=body.student_id).first()
+    if student:
+        _ensure_student_enrolled(student, db)
     return _pairing_out(pairing, db)
 
 @router.delete("/api/admin/pairings/{pairing_id}", status_code=204)
@@ -2348,6 +2430,261 @@ def send_message(other_user_id: int, body: MessageBody, current_user: models.Use
     msg = models.ChatMessage(sender_id=current_user.id, receiver_id=other_user_id, content=body.content.strip())
     db.add(msg); db.commit(); db.refresh(msg)
     return _message_out(msg, db)
+
+
+# ── Sessions & Curriculum Progress ───────────────────────────────────────────
+
+# Tutor-only fields to strip when serving lesson content to students.
+_TUTOR_ONLY_KEYS = frozenset({
+    'note', 'tip', 'tutor_script', 'visual', 'teaching_method',
+    'practice_script', 'follow_up', 'transition', 'setup', 'debrief', 'tips',
+    'tutor', 'expected', 'follow_ups', 'comparison',
+    'shy_student_tips', 'common_mistakes', 'if_struggling', 'alternatives',
+})
+
+def _student_lesson_data(data: dict) -> dict:
+    """Return lesson_data with all tutor-only fields stripped."""
+    def clean(obj):
+        if isinstance(obj, dict):
+            return {k: clean(v) for k, v in obj.items() if k not in _TUTOR_ONLY_KEYS}
+        if isinstance(obj, list):
+            return [clean(item) for item in obj]
+        return obj
+    result = clean(data)
+    result.pop('tutor_notes', None)
+    return result
+
+
+def _session_out(session: models.VPSession, lesson: models.VPCurriculumLesson,
+                 for_student: bool = False) -> dict:
+    raw_data = json.loads(lesson.lesson_data) if lesson.lesson_data else {}
+    lesson_data = _student_lesson_data(raw_data) if for_student else raw_data
+    return {
+        "id": session.id,
+        "tutor_id": session.tutor_id,
+        "student_id": session.student_id,
+        "lesson_id": session.lesson_id,
+        "current_step": session.current_step,
+        "completed": session.completed,
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+        "completed_at": session.completed_at.isoformat() if session.completed_at else None,
+        "lesson": {
+            "id": lesson.id,
+            "lesson_number": lesson.lesson_number,
+            "title": lesson.title,
+            "curriculum_id": lesson.curriculum_id,
+            "slides_url": lesson.slides_url,
+            "data": lesson_data,
+        },
+    }
+
+
+@router.get("/api/tutor/students/{student_id}/progress")
+def get_student_progress(student_id: int,
+                         current_user: models.User = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    _require_tutor(current_user)
+    pairing = db.query(models.TutorStudentPairing).filter_by(
+        tutor_id=current_user.id, student_id=student_id
+    ).first()
+    if not pairing:
+        raise HTTPException(status_code=403, detail="Not your student")
+
+    student = db.query(models.User).filter_by(id=student_id).first()
+    if not student:
+        raise HTTPException(status_code=404)
+
+    progress = _get_active_progress(student, db)
+    if not progress:
+        _ensure_student_enrolled(student, db)
+        progress = _get_active_progress(student, db)
+
+    if not progress:
+        return {"student_id": student_id, "curriculum_id": None, "curriculum_title": None,
+                "curriculum_level": None, "total_lessons": 0, "current_lesson_number": 1,
+                "completed_count": 0, "next_lesson": None, "active_session_id": None,
+                "curriculum_complete": False, "lessons": []}
+
+    curriculum = db.query(models.VPCurriculum).filter_by(id=progress.curriculum_id).first()
+    all_lessons = db.query(models.VPCurriculumLesson).filter_by(
+        curriculum_id=progress.curriculum_id
+    ).order_by(models.VPCurriculumLesson.lesson_number).all()
+    total = len(all_lessons)
+    completed_count = max(0, progress.current_lesson_number - 1)
+    curriculum_complete = progress.current_lesson_number > total
+
+    next_lesson = None
+    if not curriculum_complete:
+        cl = db.query(models.VPCurriculumLesson).filter_by(
+            curriculum_id=progress.curriculum_id,
+            lesson_number=progress.current_lesson_number,
+        ).first()
+        if cl:
+            next_lesson = {"id": cl.id, "lesson_number": cl.lesson_number, "title": cl.title}
+
+    lessons_out = []
+    for l in all_lessons:
+        if l.lesson_number < progress.current_lesson_number:
+            status = "completed"
+        elif l.lesson_number == progress.current_lesson_number and not curriculum_complete:
+            status = "next"
+        else:
+            status = "locked"
+        lessons_out.append({"id": l.id, "lesson_number": l.lesson_number, "title": l.title, "status": status})
+
+    active_session = db.query(models.VPSession).filter_by(
+        tutor_id=current_user.id, student_id=student_id, completed=False
+    ).order_by(models.VPSession.started_at.desc()).first()
+
+    return {
+        "student_id": student_id,
+        "curriculum_id": progress.curriculum_id,
+        "curriculum_title": curriculum.title if curriculum else None,
+        "curriculum_level": curriculum.level if curriculum else None,
+        "total_lessons": total,
+        "current_lesson_number": progress.current_lesson_number,
+        "completed_count": completed_count,
+        "next_lesson": next_lesson,
+        "lessons": lessons_out,
+        "active_session_id": active_session.id if active_session else None,
+        "curriculum_complete": curriculum_complete,
+    }
+
+
+class SessionBody(BaseModel):
+    student_id: int
+    lesson_id: int
+
+
+@router.post("/api/sessions", status_code=201)
+def create_session(body: SessionBody,
+                   current_user: models.User = Depends(get_current_user),
+                   db: Session = Depends(get_db)):
+    _require_tutor(current_user)
+    pairing = db.query(models.TutorStudentPairing).filter_by(
+        tutor_id=current_user.id, student_id=body.student_id
+    ).first()
+    if not pairing:
+        raise HTTPException(status_code=403, detail="Not your student")
+
+    lesson = db.query(models.VPCurriculumLesson).filter_by(id=body.lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # Reuse existing active session for same tutor+student+lesson
+    existing = db.query(models.VPSession).filter_by(
+        tutor_id=current_user.id, student_id=body.student_id,
+        lesson_id=body.lesson_id, completed=False,
+    ).first()
+    if existing:
+        return _session_out(existing, lesson)
+
+    session = models.VPSession(
+        tutor_id=current_user.id,
+        student_id=body.student_id,
+        lesson_id=body.lesson_id,
+        current_step=0,
+        completed=False,
+    )
+    db.add(session); db.commit(); db.refresh(session)
+    return _session_out(session, lesson)
+
+
+@router.get("/api/sessions/mine")
+def get_my_session(current_user: models.User = Depends(get_current_user),
+                   db: Session = Depends(get_db)):
+    """Student: return their active (incomplete) session, if any."""
+    _require_student(current_user)
+    session = db.query(models.VPSession).filter_by(
+        student_id=current_user.id, completed=False
+    ).order_by(models.VPSession.started_at.desc()).first()
+    if not session:
+        return None
+    lesson = db.query(models.VPCurriculumLesson).filter_by(id=session.lesson_id).first()
+    if not lesson:
+        return None
+    return _session_out(session, lesson, for_student=True)
+
+
+@router.get("/api/sessions/{session_id}")
+def get_session(session_id: int,
+                current_user: models.User = Depends(get_current_user),
+                db: Session = Depends(get_db)):
+    session = db.query(models.VPSession).filter_by(id=session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    is_tutor = (current_user.role == models.UserRole.tutor and
+                session.tutor_id == current_user.id)
+    is_student = (current_user.role == models.UserRole.student and
+                  session.student_id == current_user.id)
+    is_admin = current_user.role == models.UserRole.admin
+
+    if not (is_tutor or is_student or is_admin):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    lesson = db.query(models.VPCurriculumLesson).filter_by(id=session.lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    return _session_out(session, lesson, for_student=is_student)
+
+
+class StepBody(BaseModel):
+    current_step: int
+
+
+@router.patch("/api/sessions/{session_id}/step")
+def update_session_step(session_id: int, body: StepBody,
+                        current_user: models.User = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    _require_tutor(current_user)
+    session = db.query(models.VPSession).filter_by(
+        id=session_id, tutor_id=current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.completed:
+        raise HTTPException(status_code=400, detail="Session already completed")
+    session.current_step = body.current_step
+    db.commit()
+    return {"ok": True, "current_step": session.current_step}
+
+
+@router.post("/api/sessions/{session_id}/complete")
+def complete_session(session_id: int,
+                     current_user: models.User = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
+    _require_tutor(current_user)
+    session = db.query(models.VPSession).filter_by(
+        id=session_id, tutor_id=current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.completed:
+        return {"ok": True, "already_completed": True}
+
+    session.completed = True
+    session.completed_at = datetime.utcnow()
+    db.commit()
+
+    # Advance student progress if this lesson is their current one
+    lesson = db.query(models.VPCurriculumLesson).filter_by(id=session.lesson_id).first()
+    if lesson:
+        progress = db.query(models.VPStudentProgress).filter_by(
+            student_id=session.student_id, curriculum_id=lesson.curriculum_id
+        ).first()
+        if progress and progress.current_lesson_number == lesson.lesson_number:
+            total = db.query(models.VPCurriculumLesson).filter_by(
+                curriculum_id=lesson.curriculum_id
+            ).count()
+            if progress.current_lesson_number < total:
+                progress.current_lesson_number += 1
+            else:
+                progress.completed_at = datetime.utcnow()
+            db.commit()
+
+    return {"ok": True, "already_completed": False}
 
 
 # ── FastAPI app (uvicorn router:app or main:app both work) ────────────────────

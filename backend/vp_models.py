@@ -229,6 +229,19 @@ class StudentCurriculum(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class VPSession(Base):
+    __tablename__ = "vp_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tutor_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("vp_curriculum_lessons.id"), nullable=False)
+    current_step = Column(Integer, default=0, nullable=False)
+    completed = Column(Boolean, default=False, nullable=False)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
 class VPPlacementAssessment(Base):
     __tablename__ = "vp_placement_assessments"
 

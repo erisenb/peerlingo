@@ -12,8 +12,10 @@ import AdminDashboard from './pages/AdminDashboard'
 import AdminLogin from './pages/AdminLogin'
 import TutorDashboard from './pages/TutorDashboard'
 import LessonDetail from './pages/LessonDetail'
+import TutorSessionPage from './pages/TutorSessionPage'
 import StudentDashboard from './pages/StudentDashboard'
 import StudentLessonView from './pages/StudentLessonView'
+import StudentSessionView from './pages/StudentSessionView'
 import ProfilePage from './pages/ProfilePage'
 import LandingPage from './pages/LandingPage'
 import AboutUs from './pages/AboutUs'
@@ -160,6 +162,9 @@ function AnimatedRoutes() {
           <Route path="/dashboard/tutor/lesson/:id" element={
             <RequireAuth role="tutor"><LessonDetail /></RequireAuth>
           } />
+          <Route path="/dashboard/tutor/session/:sessionId" element={
+            <TutorSurveyGuard><TutorConsentGuard><RequireAuth role="tutor"><TutorSessionPage /></RequireAuth></TutorConsentGuard></TutorSurveyGuard>
+          } />
 
           <Route path="/dashboard/student" element={
             <SurveyGuard><ConsentGuard><RequireAuth role="student"><StudentDashboard /></RequireAuth></ConsentGuard></SurveyGuard>
@@ -170,6 +175,9 @@ function AnimatedRoutes() {
           <Route path="/student" element={<Navigate to="/dashboard/student" replace />} />
           <Route path="/dashboard/student/lesson/:id" element={
             <ConsentGuard><RequireAuth role="student"><StudentLessonView /></RequireAuth></ConsentGuard>
+          } />
+          <Route path="/dashboard/student/session/:sessionId" element={
+            <SurveyGuard><ConsentGuard><RequireAuth role="student"><StudentSessionView /></RequireAuth></ConsentGuard></SurveyGuard>
           } />
 
           <Route path="/dashboard/profile" element={

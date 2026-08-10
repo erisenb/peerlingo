@@ -197,6 +197,50 @@ function AssessmentBanner({ token }) {
 
 // ── Inicio (Home) tab ─────────────────────────────────────────────────────────
 
+function ActiveSessionBanner({ token }) {
+  const navigate = useNavigate()
+  const [session, setSession] = useState(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/sessions/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.completed) setSession(data) })
+      .catch(() => {})
+  }, [token])
+
+  if (!session) return null
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #0f2b3d 0%, #008080 100%)',
+      borderRadius: 18, padding: '20px 24px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+    }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+          Lección en progreso
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>
+          {session.lesson?.title ? `Lesson ${session.lesson.lesson_number} — ${session.lesson.title}` : 'Lesson in Progress'}
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>
+          Tu tutor ya comenzó — únete ahora
+        </div>
+      </div>
+      <button
+        onClick={() => navigate(`/dashboard/student/session/${session.id}`)}
+        style={{
+          background: '#FF6F61', color: '#fff', border: 'none', borderRadius: 12,
+          padding: '12px 22px', fontSize: 15, fontWeight: 800, cursor: 'pointer',
+          flexShrink: 0, boxShadow: '0 4px 14px rgba(255,111,97,0.4)',
+        }}
+      >
+        ▶ Unirse a la lección
+      </button>
+    </div>
+  )
+}
+
 function InicioTab({ user, meetings, assignments, onTabChange, token }) {
   const { t } = useLanguage()
   const [flashcardLesson, setFlashcardLesson] = useState(null)
@@ -215,6 +259,8 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Active session banner */}
+      <ActiveSessionBanner token={token} />
       {/* Assessment banner */}
       <AssessmentBanner token={token} />
 

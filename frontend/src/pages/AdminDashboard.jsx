@@ -563,117 +563,42 @@ function PairingCard({ pairing, onDelete }) {
   )
 }
 
-// ── Curriculum-assignment modal (admin picks lessons for a student) ────────────
+// ── Level selector (sets a student's level; curriculum follows automatically) ──
 
-function CurriculumAssignModal({ student, token, onClose }) {
-  const [tracksWithLessons, setTracksWithLessons] = useState([])
-  const [assignedIds, setAssignedIds] = useState(new Set())
-  const [loading, setLoading] = useState(true)
-  const [toggling, setToggling] = useState(null)
+const LEVEL_OPTIONS = ['beginner', 'intermediate', 'advanced']
 
-  useEffect(() => {
-    const h = { Authorization: `Bearer ${token}` }
-    Promise.all([
-      fetch(`${API_BASE}/api/admin/curriculum/tracks`, { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum`, { headers: h }).then(r => r.json()),
-    ]).then(async ([tracks, assigned]) => {
-      const withLessons = await Promise.all(
-        tracks.map(t =>
-          fetch(`${API_BASE}/api/admin/curriculum/tracks/${t.id}/lessons`, { headers: h })
-            .then(r => r.json()).then(ls => ({ ...t, lessons: ls }))
-        )
-      )
-      setTracksWithLessons(withLessons)
-      setAssignedIds(new Set(assigned.map(a => a.lesson_id)))
-    }).finally(() => setLoading(false))
-  }, [])
+function LevelSelect({ student, token, onChanged }) {
+  const [saving, setSaving] = useState(false)
 
-  async function toggle(lessonId) {
-    setToggling(lessonId)
+  async function setLevel(level) {
+    if (!level || level === student.english_level || saving) return
+    setSaving(true)
     try {
-      if (assignedIds.has(lessonId)) {
-        await fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum/${lessonId}`, {
-          method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-        })
-        setAssignedIds(s => { const n = new Set(s); n.delete(lessonId); return n })
-      } else {
-        await fetch(`${API_BASE}/api/admin/students/${student.id}/curriculum`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ lesson_id: lessonId }),
-        })
-        setAssignedIds(s => new Set([...s, lessonId]))
-      }
-    } finally { setToggling(null) }
+      const res = await fetch(`${API_BASE}/api/admin/students/${student.id}/level`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ level }),
+      })
+      if (res.ok) onChanged(await res.json())
+    } finally { setSaving(false) }
   }
 
-  const totalLessons = tracksWithLessons.reduce((sum, t) => sum + (t.lessons?.length || 0), 0)
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-        <h2 style={{ fontSize: 19, fontWeight: 900, color: '#1e293b', marginBottom: 4 }}>
-          📚 Curriculum for {student.full_name}
-        </h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
-          Select which lessons this student will follow. Their tutor will see these in the student profile.
-        </p>
-
-        {loading ? (
-          <p style={{ textAlign: 'center', color: '#9ca3af', padding: 32 }}>Loading…</p>
-        ) : totalLessons === 0 ? (
-          <p style={{ color: '#6b7280', textAlign: 'center', padding: 24, fontStyle: 'italic' }}>
-            No curriculum lessons found.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {tracksWithLessons.map(track => {
-              const tm = TRACK_META[track.level] || TRACK_META.beginner
-              if (!track.lessons?.length) return null
-              return (
-                <div key={track.id}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: tm.color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
-                    {tm.icon} {tm.label}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {track.lessons.map(item => {
-                      const assigned = assignedIds.has(item.id)
-                      const busy = toggling === item.id
-                      return (
-                        <div key={item.id} style={{
-                          borderRadius: 10, padding: '11px 14px',
-                          border: `2px solid ${assigned ? tm.color : '#e5e7eb'}`,
-                          background: assigned ? tm.bg : '#fafafa',
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-                            <span style={{ fontSize: 12, fontWeight: 800, color: tm.color, minWidth: 20 }}>#{item.lesson_number}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{item.title}</span>
-                          </div>
-                          <button onClick={() => toggle(item.id)} disabled={busy} style={{
-                            background: assigned ? '#dc2626' : tm.color, color: '#fff',
-                            border: 'none', borderRadius: 7, padding: '6px 12px',
-                            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                            opacity: busy ? 0.6 : 1, flexShrink: 0,
-                          }}>
-                            {busy ? '…' : assigned ? '✕ Remove' : '+ Add'}
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div style={{ marginTop: 24, textAlign: 'right' }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Done</button>
-        </div>
-      </div>
-    </div>
+    <select
+      value={student.english_level || ''}
+      onChange={e => setLevel(e.target.value)}
+      disabled={saving}
+      style={{
+        border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '5px 8px',
+        fontSize: 12, fontWeight: 700, color: '#1e293b', background: '#fff',
+        cursor: saving ? 'not-allowed' : 'pointer',
+      }}
+    >
+      <option value="" disabled>Set level…</option>
+      {LEVEL_OPTIONS.map(l => (
+        <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
+      ))}
+    </select>
   )
 }
 
@@ -684,7 +609,6 @@ function UsersTab({ token }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [curriculumStudent, setCurriculumStudent] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -698,6 +622,10 @@ function UsersTab({ token }) {
     setTutors(ts => ts.filter(u => u.id !== id))
     setStudents(ss => ss.filter(u => u.id !== id))
     setConfirmDelete(null)
+  }
+
+  function handleLevelChanged(updated) {
+    setStudents(ss => ss.map(s => s.id === updated.id ? updated : s))
   }
 
   if (loading) return <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>Loading…</p>
@@ -716,9 +644,9 @@ function UsersTab({ token }) {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
           {isStudent && (
-            <button onClick={() => setCurriculumStudent(u)} style={smallBtn(PURPLE)}>📚 Curriculum</button>
+            <LevelSelect student={u} token={token} onChanged={handleLevelChanged} />
           )}
           {confirmDelete === u.id
             ? <>
@@ -766,14 +694,6 @@ function UsersTab({ token }) {
           <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
           <p style={{ color: '#6b7280', fontSize: 14 }}>No users yet. Accounts appear here once people register.</p>
         </div>
-      )}
-
-      {curriculumStudent && (
-        <CurriculumAssignModal
-          student={curriculumStudent}
-          token={token}
-          onClose={() => setCurriculumStudent(null)}
-        />
       )}
     </div>
   )

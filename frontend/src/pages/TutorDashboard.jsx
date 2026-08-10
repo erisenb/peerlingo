@@ -663,43 +663,6 @@ function MyLessonsTab({ token }) {
   )
 }
 
-// ── Assign-lesson modal (just picks a due date) ───────────────────────────────
-
-function DueDateModal({ lesson, totalLessons, nextLessonTitle, studentName, onSave, onClose, saving }) {
-  const [dueDate, setDueDate] = useState('')
-  return (
-    <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', marginBottom: 16 }}>Assign Lesson</h2>
-        <div style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#008080', marginBottom: 4 }}>
-            Lesson {lesson.lesson_number}/{totalLessons}
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{lesson.title}</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>For {studentName}</div>
-          {lesson.description && (
-            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>{lesson.description}</div>
-          )}
-          {nextLessonTitle && (
-            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,128,128,0.1)' }}>
-              Next up: <strong style={{ color: '#64748b' }}>{nextLessonTitle}</strong>
-            </div>
-          )}
-        </div>
-        <label style={labelStyle}>Due Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-          style={{ ...inputStyle, width: 'auto', display: 'block' }} />
-        <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-          <button onClick={() => onSave(dueDate || null)} disabled={saving}
-            style={{ ...saveBtnStyle(BLUE), opacity: saving ? 0.6 : 1 }}>
-            {saving ? 'Assigning…' : 'Assign →'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── My Students tab ───────────────────────────────────────────────────────────
 
@@ -826,16 +789,17 @@ function InfoLine({ label, value }) {
 }
 
 function MyStudentsTab({ token }) {
+  const navigate = useNavigate()
   const [students, setStudents] = useState([])
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
-  const [assigningLesson, setAssigningLesson] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [studentCurriculum, setStudentCurriculum] = useState([])
   const [curriculumLoading, setCurriculumLoading] = useState(false)
   const [placement, setPlacement] = useState(null)
   const [showResponses, setShowResponses] = useState(false)
+  const [studentProgress, setStudentProgress] = useState(null)
+  const [startingLesson, setStartingLesson] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -846,36 +810,42 @@ function MyStudentsTab({ token }) {
   }, [])
 
   useEffect(() => {
-    if (!selected) { setStudentCurriculum([]); setPlacement(null); setShowResponses(false); return }
+    if (!selected) {
+      setPlacement(null); setShowResponses(false); setStudentProgress(null)
+      return
+    }
     setCurriculumLoading(true)
     Promise.all([
-      fetch(`${API_BASE}/api/students/${selected.id}/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : []),
       fetch(`${API_BASE}/api/assessment/student/${selected.id}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([curr, place]) => { setStudentCurriculum(curr); setPlacement(place) })
+      fetch(`${API_BASE}/api/tutor/students/${selected.id}/progress`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([place, prog]) => { setPlacement(place); setStudentProgress(prog) })
       .finally(() => setCurriculumLoading(false))
   }, [selected])
 
-  async function assignLesson(dueDate) {
-    setSaving(true)
+  async function handleStartLesson() {
+    if (!studentProgress?.next_lesson) return
+    setStartingLesson(true)
     try {
-      await fetch(`${API_BASE}/api/assignments`, {
+      // If there's already an active session, go straight to it
+      if (studentProgress.active_session_id) {
+        navigate(`/dashboard/tutor/session/${studentProgress.active_session_id}`)
+        return
+      }
+      const res = await fetch(`${API_BASE}/api/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          title: assigningLesson.title,
-          description: assigningLesson.description || '',
-          type: 'homework',
-          due_date: dueDate || null,
-          student_id: selected.id,
-          curriculum_id: assigningLesson.lesson_id,
-        }),
+        body: JSON.stringify({ student_id: selected.id, lesson_id: studentProgress.next_lesson.id }),
       })
-      const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })
-      setAssignments(await res.json())
-      setAssigningLesson(null)
-    } finally { setSaving(false) }
+      if (!res.ok) throw new Error('Failed to create session')
+      const session = await res.json()
+      navigate(`/dashboard/tutor/session/${session.id}`)
+    } catch (e) {
+      alert('Could not start session. Please try again.')
+    } finally {
+      setStartingLesson(false)
+    }
   }
 
   async function deleteAssignment(id) {
@@ -883,20 +853,20 @@ function MyStudentsTab({ token }) {
     setAssignments(a => a.filter(x => x.id !== id))
   }
 
-  async function quickAssign(item, type, label) {
+  async function quickAssign(lesson, type, label) {
     setSaving(true)
     try {
       await fetch(`${API_BASE}/api/assignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title: `${label}: ${item.title}`,
-          description: item.description || '',
+          title: `${label}: ${lesson.title}`,
+          description: '',
           type,
           due_date: null,
           student_id: selected.id,
           curriculum_id: null,
-          vp_lesson_id: item.lesson_id,
+          vp_lesson_id: lesson.id,
         }),
       })
       const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })
@@ -950,9 +920,8 @@ function MyStudentsTab({ token }) {
   // ── Student profile ───────────────────────────────────────────────────────
 
   const studentAssignments = assignments.filter(a => a.student_id === selected.id)
-  const assignedByCurriculumId = {}
-  studentAssignments.forEach(a => { if (a.curriculum_id) assignedByCurriculumId[a.curriculum_id] = a })
-  const nextUnassigned = studentCurriculum.find(item => !assignedByCurriculumId[item.lesson_id])
+  const assignedByVpLessonId = {}
+  studentAssignments.forEach(a => { if (a.vp_lesson_id) assignedByVpLessonId[a.vp_lesson_id] = a })
 
   return (
     <div>
@@ -1033,6 +1002,87 @@ function MyStudentsTab({ token }) {
         )}
       </div>
 
+      {/* Next Lesson / Curriculum Progress card */}
+      {studentProgress && (
+        <div style={{
+          background: studentProgress.curriculum_complete
+            ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+            : 'linear-gradient(135deg, #e0f2fe 0%, rgba(0,128,128,0.08) 100%)',
+          borderRadius: 18, padding: '22px 24px',
+          border: `2px solid ${studentProgress.curriculum_complete ? '#22c55e' : '#008080'}`,
+          marginBottom: 24,
+        }}>
+          {/* Header row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                {studentProgress.curriculum_complete ? '🎉 Curriculum Complete' : '📚 Curriculum Progress'}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b' }}>
+                {studentProgress.curriculum_title || (selected.english_level ? `${selected.english_level.charAt(0).toUpperCase() + selected.english_level.slice(1)} English` : 'No curriculum assigned')}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#008080' }}>
+                {studentProgress.completed_count} <span style={{ fontSize: 14, color: '#64748b', fontWeight: 600 }}>/ {studentProgress.total_lessons}</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>lessons done</div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {studentProgress.total_lessons > 0 && (
+            <div style={{ background: 'rgba(0,128,128,0.12)', borderRadius: 99, height: 8, marginBottom: 16, overflow: 'hidden' }}>
+              <div style={{
+                background: studentProgress.curriculum_complete ? '#22c55e' : '#008080',
+                height: '100%',
+                borderRadius: 99,
+                width: `${Math.min(100, (studentProgress.completed_count / studentProgress.total_lessons) * 100)}%`,
+                transition: 'width 0.6s ease',
+              }} />
+            </div>
+          )}
+
+          {/* Next lesson + start button */}
+          {studentProgress.curriculum_complete ? (
+            <div style={{ fontSize: 14, color: '#15803d', fontWeight: 700, textAlign: 'center', padding: '8px 0' }}>
+              All {studentProgress.total_lessons} lessons completed! 🎓
+            </div>
+          ) : studentProgress.next_lesson ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>
+                  {studentProgress.active_session_id ? 'Session in progress' : 'Next up'}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d' }}>
+                  Lesson {studentProgress.next_lesson.lesson_number} — {studentProgress.next_lesson.title}
+                </div>
+              </div>
+              <button
+                onClick={handleStartLesson}
+                disabled={startingLesson}
+                style={{
+                  background: startingLesson ? '#94a3b8' : '#008080',
+                  color: '#fff', border: 'none', borderRadius: 12,
+                  padding: '12px 22px', fontSize: 14, fontWeight: 800,
+                  cursor: startingLesson ? 'not-allowed' : 'pointer',
+                  flexShrink: 0, transition: 'background 0.15s',
+                  boxShadow: '0 4px 14px rgba(0,128,128,0.3)',
+                }}
+              >
+                {startingLesson ? 'Starting…'
+                  : studentProgress.active_session_id ? '▶ Resume Session'
+                  : '▶ Start Next Lesson'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#64748b' }}>
+              No curriculum assigned yet — student level: {selected.english_level || 'not set'}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Placement assessment results */}
       {placement && (
         <div style={{ marginBottom: 26 }}>
@@ -1086,86 +1136,61 @@ function MyStudentsTab({ token }) {
         </div>
       )}
 
-      {/* Curriculum & assignment status */}
+      {/* Curriculum — auto-determined by level; the tutor never assigns lessons manually */}
       <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>Curriculum</h3>
       {curriculumLoading ? (
         <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading…</p>
-      ) : studentCurriculum.length === 0 ? (
+      ) : !studentProgress?.lessons?.length ? (
         <div style={{ background: '#f8fafc', borderRadius: 12, padding: '16px 18px', border: '1.5px dashed #cbd5e1' }}>
           <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
-            No curriculum assigned yet — the admin will assign lessons for this student.
+            {selected.english_level
+              ? 'No curriculum found for this student\'s level yet.'
+              : 'This student hasn\'t set a level yet — ask an admin to set it.'}
           </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {studentCurriculum.map((item, i) => {
-            const rec = assignedByCurriculumId[item.lesson_id]
-            const isDone = !!rec
-            const isNext = item === nextUnassigned
+          {studentProgress.lessons.map(lesson => {
+            const isDone = lesson.status === 'completed'
+            const isNext = lesson.status === 'next'
+            const hw = assignedByVpLessonId[lesson.id]
             const borderColor = isDone ? '#22c55e' : isNext ? '#008080' : 'rgba(0,128,128,0.18)'
             const bg = isDone ? '#f0fdf4' : isNext ? 'rgba(0,128,128,0.04)' : '#fafafa'
+            const icon = isDone ? '✓' : isNext ? '▶' : '○'
             return (
-              <div key={item.lesson_id} style={{
+              <div key={lesson.id} style={{
                 borderRadius: 12, padding: '14px 16px', border: `2px solid ${borderColor}`,
                 background: bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
-                      Lesson {item.lesson_number}/{item.track_total || studentCurriculum.length}
+                    <span style={{ fontSize: 14, fontWeight: 900, color: isDone ? '#16a34a' : isNext ? '#008080' : '#94a3b8', width: 16, textAlign: 'center' }}>
+                      {icon}
                     </span>
-                    {isDone && <span style={{ fontSize: 12 }}>✅</span>}
-                    <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{item.title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                      Lesson {lesson.lesson_number}/{studentProgress.total_lessons}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{lesson.title}</span>
                     {isNext && (
                       <span style={{ fontSize: 11, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.1)', borderRadius: 20, padding: '2px 9px' }}>
-                        Next up
+                        Next
                       </span>
                     )}
                   </div>
-                  {item.description && (
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3, marginLeft: 32 }}>
-                      {item.description.length > 100 ? item.description.slice(0, 100) + '…' : item.description}
-                    </div>
-                  )}
-                  {isDone && (
-                    <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
-                      Assigned{rec.due_date ? ` · Due ${rec.due_date}` : ' · No due date set'}
-                    </div>
-                  )}
-                  {isNext && item.next_in_track_title && (
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 5 }}>
-                      Next up: <strong style={{ color: '#64748b' }}>{item.next_in_track_title}</strong>
+                  {hw && (
+                    <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, marginTop: 4, marginLeft: 24 }}>
+                      {hw.type === 'quiz' ? '🧪' : '📇'} {hw.title}
                     </div>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                  {isDone ? (
-                    <button onClick={() => deleteAssignment(rec.id)} style={smallBtn('#dc2626')}>↩ Unassign</button>
-                  ) : isNext ? (
-                    <button onClick={() => setAssigningLesson(item)} style={{
-                      background: '#008080', color: '#fff', border: 'none', borderRadius: 8,
-                      padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    }}>📅 Assign</button>
-                  ) : null}
-                  <button onClick={() => quickAssign(item, 'practice', '📇 Flashcards')} disabled={saving} style={smallBtn('#6366f1')}>📇 Flashcards</button>
-                  <button onClick={() => quickAssign(item, 'quiz', '🧪 Quiz')} disabled={saving} style={smallBtn('#FF6F61')}>🧪 Quiz</button>
+                  <button onClick={() => quickAssign(lesson, 'practice', '📇 Flashcards')} disabled={saving} style={smallBtn('#6366f1')}>📇 Flashcards</button>
+                  <button onClick={() => quickAssign(lesson, 'quiz', '🧪 Quiz')} disabled={saving} style={smallBtn('#FF6F61')}>🧪 Quiz</button>
                 </div>
               </div>
             )
           })}
         </div>
-      )}
-
-      {assigningLesson && (
-        <DueDateModal
-          lesson={assigningLesson}
-          totalLessons={assigningLesson.track_total || studentCurriculum.length}
-          nextLessonTitle={assigningLesson.next_in_track_title}
-          studentName={selected.full_name}
-          onSave={assignLesson}
-          onClose={() => setAssigningLesson(null)}
-          saving={saving}
-        />
       )}
     </div>
   )

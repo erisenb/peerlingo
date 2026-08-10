@@ -983,9 +983,8 @@ def dev_ensure_accounts(db: Session = Depends(get_db)):
             )
             db.add(user)
             db.flush()
-            _apply_dev_baseline(user, baseline)
-        else:
-            user.hashed_password = hash_password("testpass")
+        user.hashed_password = hash_password("testpass")
+        _apply_dev_baseline(user, baseline)
         db.commit()
         db.refresh(user)
         users_by_email[email] = user

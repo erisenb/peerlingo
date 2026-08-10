@@ -93,11 +93,15 @@ export default function DevLogin() {
   const navigate = useNavigate()
   const [status, setStatus] = useState({})
   const [resetSt, setResetSt] = useState({})
+  const [slowLoad, setSlowLoad] = useState(false)
 
   async function enter(acct) {
     setStatus(s => ({ ...s, [acct.email]: 'loading' }))
+    const slowTimer = setTimeout(() => setSlowLoad(true), 6000)
     try {
       const res = await fetch(`${API_BASE}/api/dev/ensure-accounts`, { method: 'POST' })
+      clearTimeout(slowTimer)
+      setSlowLoad(false)
       if (!res.ok) throw new Error('server')
       const accounts = await res.json()
       const { token, user } = accounts[acct.email]
@@ -105,6 +109,8 @@ export default function DevLogin() {
       sessionStorage.setItem('vp_demo_email', user.email)
       navigate(acct.dest)
     } catch (e) {
+      clearTimeout(slowTimer)
+      setSlowLoad(false)
       const msg = e instanceof TypeError ? 'offline' : 'error'
       setStatus(s => ({ ...s, [acct.email]: msg }))
     }
@@ -207,6 +213,12 @@ export default function DevLogin() {
       <p style={{ color: '#94a3b8', fontSize: 12, marginTop: -4 }}>
         Creates accounts automatically if they don't exist yet
       </p>
+
+      {slowLoad && (
+        <div style={{ background: '#fef9c3', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: '#92400e', textAlign: 'center' }}>
+          Backend is waking up — this takes up to 60 seconds on first load. Please wait...
+        </div>
+      )}
 
       {/* Registration flow testing */}
       <div style={{

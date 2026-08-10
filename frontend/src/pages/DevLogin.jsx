@@ -102,7 +102,7 @@ export default function DevLogin() {
       const accounts = await res.json()
       const { token, user } = accounts[acct.email]
       await login(token, user)
-      localStorage.setItem('vp_demo_email', user.email)
+      sessionStorage.setItem('vp_demo_email', user.email)
       navigate(acct.dest)
     } catch (e) {
       const msg = e instanceof TypeError ? 'offline' : 'error'
@@ -121,8 +121,8 @@ export default function DevLogin() {
       if (!res.ok) throw new Error('server')
       const data = await res.json()
       await login(data.token, data.user)
-      localStorage.setItem('vp_demo_email', acct.email)
-      navigate(acct.dest)
+      sessionStorage.setItem('vp_demo_email', acct.email)
+      navigate(acct.role === 'tutor' ? '/tutor-consent' : acct.dest)
     } catch (e) {
       const msg = e instanceof TypeError ? 'offline' : 'error'
       setResetSt(s => ({ ...s, [acct.email]: msg }))

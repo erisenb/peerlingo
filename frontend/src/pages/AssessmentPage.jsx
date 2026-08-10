@@ -28,10 +28,10 @@ const VOCAB_QUESTIONS = [
 const READ_BASIC = [
   {
     key: 'read_q1',
-    sentence: '"My name is Anna."',
-    question_es: '¿Cómo se llama?',
-    question_en: 'What is her name?',
-    choices: [['a','Maria'],['b','Anna'],['c','Sofia'],['d','Emma']],
+    sentence: '"I have a cat at home."',
+    question_es: '¿Qué animal tiene en casa?',
+    question_en: 'What animal does she have at home?',
+    choices: [['a','Perro'],['b','Conejo'],['c','Gato'],['d','Pájaro']],
   },
   {
     key: 'read_q2',
@@ -68,9 +68,9 @@ const READ_COMP = [
   },
   {
     key: 'read_q6',
-    question_es: '¿Cuántos años tiene?',
-    question_en: 'How old is she?',
-    choices: [['a','12'],['b','13'],['c','14'],['d','15']],
+    question_es: '¿Con quién juega fútbol María?',
+    question_en: 'Who does Maria play soccer with?',
+    choices: [['a','Con su familia'],['b','Con su maestra'],['c','Con sus amigos'],['d','Sola']],
   },
   {
     key: 'read_q7',

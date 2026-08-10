@@ -876,6 +876,7 @@ _DEV_BASELINE: dict = {
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level="conversational", availability_days="Mon,Wed,Fri", availability_times="Afternoon",
         phone=None, receive_reminders=True,
+        tutor_consent_version="v1",
     ),
     "demo-tutor2@peerlingo.test": dict(
         full_name="Sofia Ramirez", role=models.UserRole.tutor,
@@ -886,6 +887,7 @@ _DEV_BASELINE: dict = {
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level="conversational", availability_days="Tue,Thu", availability_times="Evening",
         phone=None, receive_reminders=True,
+        tutor_consent_version="v1",
     ),
     "demo-tutor3@peerlingo.test": dict(
         full_name="Tyler Brooks", role=models.UserRole.tutor,
@@ -896,36 +898,40 @@ _DEV_BASELINE: dict = {
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level="beginner", availability_days="Sat,Sun", availability_times="Morning",
         phone=None, receive_reminders=True,
+        tutor_consent_version="v1",
     ),
     "demo-student1@peerlingo.test": dict(
         full_name="Maria Flores", role=models.UserRole.student,
         school="Colegio San Agustín", grade="4th Grade",
         bio=None, goals="Learn English to communicate better at school and make new friends.",
         city="Lima", state=None, country="Peru",
-        date_of_birth=None, english_level="beginner", preferred_focus="reading",
+        date_of_birth=None, english_level="beginner", preferred_focus="english",
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level=None, availability_days=None, availability_times=None,
         phone=None, receive_reminders=True,
+        minor_consent_version="v1",
     ),
     "demo-student2@peerlingo.test": dict(
         full_name="Carlos Mendez", role=models.UserRole.student,
         school="Colegio Nacional", grade="9th Grade",
         bio=None, goals="Improve my English for job opportunities and professional growth.",
         city="Bogotá", state=None, country="Colombia",
-        date_of_birth=None, english_level="intermediate", preferred_focus="speaking",
+        date_of_birth=None, english_level="intermediate", preferred_focus="both",
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level=None, availability_days=None, availability_times=None,
         phone=None, receive_reminders=True,
+        minor_consent_version="v1",
     ),
     "demo-student3@peerlingo.test": dict(
         full_name="Isabella Torres", role=models.UserRole.student,
         school="Prepa UNAM", grade="11th Grade",
         bio=None, goals="Prepare for college applications in the US and improve my academic writing.",
         city="Mexico City", state=None, country="Mexico",
-        date_of_birth=None, english_level="advanced", preferred_focus="writing",
+        date_of_birth=None, english_level="advanced", preferred_focus="both",
         preferred_tutor_gender=None, survey_completed=True,
         spanish_level=None, availability_days=None, availability_times=None,
         phone=None, receive_reminders=True,
+        minor_consent_version="v1",
     ),
 }
 
@@ -949,13 +955,24 @@ def _apply_dev_baseline(user: models.User, baseline: dict) -> None:
     user.availability_times = baseline.get("availability_times")
     user.phone = baseline.get("phone")
     user.receive_reminders = baseline.get("receive_reminders", True)
+    user.tutor_consent_version = baseline.get("tutor_consent_version")
+    user.minor_consent_version = baseline.get("minor_consent_version")
+
+
+def _dev_allowed():
+    if os.environ.get("ENABLE_DEV_ROUTES"):
+        return True
+    if not os.environ.get("VP_SECRET_KEY"):
+        return True
+    return False
 
 
 @router.post("/api/dev/ensure-accounts")
 def dev_ensure_accounts(db: Session = Depends(get_db)):
-    if os.environ.get("VP_SECRET_KEY"):
+    if not _dev_allowed():
         raise HTTPException(status_code=404, detail="Not found")
     result = {}
+    users_by_email: dict[str, models.User] = {}
     for email, baseline in _DEV_BASELINE.items():
         user = db.query(models.User).filter(models.User.email == email).first()
         if not user:
@@ -971,17 +988,46 @@ def dev_ensure_accounts(db: Session = Depends(get_db)):
             user.hashed_password = hash_password("testpass")
         db.commit()
         db.refresh(user)
+        users_by_email[email] = user
         result[email] = {
             "token": create_access_token(user.id),
             "user": _user_out(user).model_dump(),
         }
+
+    # Ensure demo tutor-student pairings exist
+    demo_pairs = [
+        ("demo-tutor1@peerlingo.test", "demo-student1@peerlingo.test"),
+        ("demo-tutor2@peerlingo.test", "demo-student2@peerlingo.test"),
+        ("demo-tutor3@peerlingo.test", "demo-student3@peerlingo.test"),
+    ]
+    for tutor_email, student_email in demo_pairs:
+        tutor = users_by_email.get(tutor_email)
+        student = users_by_email.get(student_email)
+        if not tutor or not student:
+            continue
+        existing = db.query(models.TutorStudentPairing).filter_by(
+            tutor_id=tutor.id, student_id=student.id
+        ).first()
+        if not existing:
+            db.add(models.TutorStudentPairing(tutor_id=tutor.id, student_id=student.id))
+
+    # Ensure demo students have a placement assessment
+    for email in ("demo-student1@peerlingo.test", "demo-student2@peerlingo.test", "demo-student3@peerlingo.test"):
+        student = users_by_email.get(email)
+        if not student:
+            continue
+        existing_a = db.query(models.VPPlacementAssessment).filter_by(student_id=student.id).first()
+        if not existing_a:
+            db.add(models.VPPlacementAssessment(student_id=student.id))
+
+    db.commit()
     return result
 
 
 @router.post("/api/dev/reset-account")
 def dev_reset_account(email: str, db: Session = Depends(get_db)):
     """Restore a demo account to its baseline profile (called automatically on logout)."""
-    if os.environ.get("VP_SECRET_KEY"):
+    if not _dev_allowed():
         raise HTTPException(status_code=404, detail="Not found")
     if email not in _DEV_BASELINE:
         raise HTTPException(status_code=400, detail="Not a demo account")
@@ -1014,7 +1060,7 @@ def dev_reset_account(email: str, db: Session = Depends(get_db)):
 @router.post("/api/dev/reset-for-registration")
 def dev_reset_for_registration(email: Optional[str] = None, role: Optional[str] = None, db: Session = Depends(get_db)):
     """Wipe survey/profile data for a demo account so registration flow can be re-tested."""
-    if os.environ.get("VP_SECRET_KEY"):
+    if not _dev_allowed():
         raise HTTPException(status_code=404, detail="Not found")
     if not email:
         legacy_map = {"student": "demo-student1@peerlingo.test", "tutor": "demo-tutor1@peerlingo.test"}
@@ -2178,8 +2224,8 @@ def get_admin_stats(current_user: models.User = Depends(get_current_user), db: S
 _PLACEMENT_ANSWERS = {
     'vocab_q1': 'a', 'vocab_q2': 'b', 'vocab_q3': 'c',
     'vocab_q4': 'b', 'vocab_q5': 'c', 'vocab_q6': 'd',
-    'read_q1': 'b', 'read_q2': 'b', 'read_q3': 'd', 'read_q4': 'b',
-    'read_q5': 'b', 'read_q6': 'd', 'read_q7': 'c', 'read_q8': 'c',
+    'read_q1': 'c', 'read_q2': 'b', 'read_q3': 'd', 'read_q4': 'b',
+    'read_q5': 'b', 'read_q6': 'c', 'read_q7': 'c', 'read_q8': 'c',
     'gram_q1': 'a', 'gram_q2': 'b', 'gram_q3': 'c', 'gram_q4': 'b', 'gram_q5': 'c',
 }
 
@@ -2207,6 +2253,7 @@ def _assessment_out(a: models.VPPlacementAssessment) -> dict:
         "vocab_score": a.vocab_score, "reading_score": a.reading_score,
         "grammar_score": a.grammar_score, "total_score": a.total_score,
         "completed_at": a.completed_at.isoformat() if a.completed_at else None,
+        "answers": json.loads(a.answers) if a.answers else None,
     }
 
 

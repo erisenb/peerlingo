@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
 import { API_BASE } from '../api'
+import { needsMinorConsent } from '../utils/age'
 
 const ENGLISH_LEVELS = [
   {
@@ -149,8 +150,9 @@ export default function StudentSurvey() {
         }),
       })
       if (!res.ok) throw new Error(isEs ? 'No se pudo guardar. Intenta de nuevo.' : 'Could not save. Please try again.')
+      const updatedUser = await res.json()
       await refreshUser()
-      navigate('/dashboard/student?tab=mensajes')
+      navigate(needsMinorConsent(updatedUser) ? '/consent' : '/dashboard/student?tab=mensajes')
     } catch (err) {
       setError(err.message)
     } finally {

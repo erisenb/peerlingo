@@ -742,6 +742,89 @@ function StudentAvatar({ student, size = 52 }) {
   )
 }
 
+const CORRECT_ANSWERS = {
+  vocab_q1:'a', vocab_q2:'b', vocab_q3:'c', vocab_q4:'b', vocab_q5:'c', vocab_q6:'d',
+  read_q1:'c', read_q2:'b', read_q3:'d', read_q4:'b',
+  read_q5:'b', read_q6:'c', read_q7:'c', read_q8:'c',
+  gram_q1:'a', gram_q2:'b', gram_q3:'c', gram_q4:'b', gram_q5:'c',
+}
+const QUESTION_LABELS = {
+  vocab_q1:'"dog" → ?', vocab_q2:'"house" → ?', vocab_q3:'"water" → ?',
+  vocab_q4:'"teacher" → ?', vocab_q5:'"apple" → ?', vocab_q6:'"happy" → ?',
+  read_q1:'"I have a cat at home."', read_q2:'"I have two brothers."',
+  read_q3:'"The dog is sleeping."', read_q4:'"She drinks water every morning."',
+  read_q5:'María vive en…', read_q6:'¿Con quién juega fútbol?',
+  read_q7:'¿Qué le gusta hacer?', read_q8:'¿Cuándo va a la escuela?',
+  gram_q1:'"I ___ a student."', gram_q2:'"She ___ soccer every weekend."',
+  gram_q3:'"There ___ two dogs…"', gram_q4:'"What ___ your name?"',
+  gram_q5:'"I ___ English right now."',
+}
+const HEAR_LABELS = { never:'Nunca', rarely:'Raramente', sometimes:'A veces', often:'Seguido', very_often:'Muy seguido' }
+const CONFIDENCE_LABELS = { very:'Muy seguro(a)', somewhat:'Algo seguro(a)', not_very:'No mucho', not_at_all:'Para nada' }
+
+function ResponsesView({ placement }) {
+  const ans = placement.answers || {}
+  const sections = [
+    { label: 'Vocabulario', keys: ['vocab_q1','vocab_q2','vocab_q3','vocab_q4','vocab_q5','vocab_q6'] },
+    { label: 'Lectura',     keys: ['read_q1','read_q2','read_q3','read_q4','read_q5','read_q6','read_q7','read_q8'] },
+    { label: 'Gramática',   keys: ['gram_q1','gram_q2','gram_q3','gram_q4','gram_q5'] },
+  ]
+  return (
+    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Background info */}
+      <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>Información previa</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <InfoLine label="¿Estudió inglés antes?" value={ans.info_studied_before === 'yes' ? `Sí — ${ans.info_years_studied || ''}` : 'No'} />
+          <InfoLine label="¿Con qué frecuencia escucha inglés?" value={HEAR_LABELS[ans.info_hear_english] || ans.info_hear_english || '—'} />
+          <InfoLine label="Confianza hablando inglés" value={CONFIDENCE_LABELS[ans.confidence] || ans.confidence || '—'} />
+        </div>
+      </div>
+
+      {/* Question breakdown */}
+      {sections.map(sec => (
+        <div key={sec.label}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>{sec.label}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {sec.keys.map(k => {
+              const given = ans[k]
+              const correct = CORRECT_ANSWERS[k]
+              const isRight = given === correct
+              return (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, background: isRight ? '#f0fdf4' : given ? '#fef2f2' : '#f8fafc' }}>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>{isRight ? '✅' : given ? '❌' : '—'}</span>
+                  <span style={{ fontSize: 12, color: '#475569', flex: 1 }}>{QUESTION_LABELS[k]}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: isRight ? '#16a34a' : given ? '#dc2626' : '#94a3b8' }}>
+                    {given ? given.toUpperCase() : 'No respondió'}
+                    {given && !isRight && ` (correcto: ${correct.toUpperCase()})`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Writing sample */}
+      {ans.speaking_text && (
+        <div style={{ background: 'rgba(0,128,128,0.04)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(0,128,128,0.15)' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#008080', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Muestra de escritura en inglés</div>
+          <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>"{ans.speaking_text}"</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InfoLine({ label, value }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+      <span style={{ color: '#64748b', flexShrink: 0 }}>{label}:</span>
+      <span style={{ fontWeight: 600, color: '#1e293b' }}>{value}</span>
+    </div>
+  )
+}
+
 function MyStudentsTab({ token }) {
   const [students, setStudents] = useState([])
   const [assignments, setAssignments] = useState([])
@@ -752,6 +835,7 @@ function MyStudentsTab({ token }) {
   const [studentCurriculum, setStudentCurriculum] = useState([])
   const [curriculumLoading, setCurriculumLoading] = useState(false)
   const [placement, setPlacement] = useState(null)
+  const [showResponses, setShowResponses] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -762,7 +846,7 @@ function MyStudentsTab({ token }) {
   }, [])
 
   useEffect(() => {
-    if (!selected) { setStudentCurriculum([]); setPlacement(null); return }
+    if (!selected) { setStudentCurriculum([]); setPlacement(null); setShowResponses(false); return }
     setCurriculumLoading(true)
     Promise.all([
       fetch(`${API_BASE}/api/students/${selected.id}/curriculum`, { headers: { Authorization: `Bearer ${token}` } })
@@ -983,6 +1067,13 @@ function MyStudentsTab({ token }) {
                     ✍️ Grammar: {placement.grammar_score}/5
                   </div>
                 </div>
+                <button
+                  onClick={() => setShowResponses(r => !r)}
+                  style={{ marginTop: 14, background: 'none', border: '1.5px solid rgba(0,128,128,0.3)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#008080', cursor: 'pointer' }}
+                >
+                  {showResponses ? '▲ Ocultar respuestas' : '📋 Ver respuestas del estudiante'}
+                </button>
+                {showResponses && placement.answers && <ResponsesView placement={placement} />}
               </div>
             )
           })() : (

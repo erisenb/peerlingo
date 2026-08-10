@@ -16,7 +16,7 @@ const EN = {
     },
     {
       heading: 'Information Sharing',
-      body: "We do NOT sell, trade, or share your personal information with third parties for commercial purposes. We will never share your personal information with advertisers or data brokers. Limited sharing occurs only with: (a) Google, if you choose to sign in with Google (subject to Google's Privacy Policy); (b) service providers who help us operate the platform, under strict confidentiality agreements.",
+      body: "We do NOT sell, trade, or share your personal information with third parties for commercial purposes. We will never share your personal information with advertisers or data brokers. Limited sharing occurs only with service providers who help us operate the platform, under strict confidentiality agreements.",
     },
     {
       heading: 'Data Security',
@@ -51,7 +51,7 @@ const ES = {
     },
     {
       heading: 'Compartir información',
-      body: 'NO vendemos, intercambiamos ni compartimos tu información personal con terceros con fines comerciales. Nunca compartiremos tu información con anunciantes o corredores de datos. El intercambio limitado ocurre solo con: (a) Google, si inicias sesión con Google (sujeto a la Política de privacidad de Google); (b) proveedores de servicios que nos ayudan a operar la plataforma, bajo acuerdos de confidencialidad estrictos.',
+      body: 'NO vendemos, intercambiamos ni compartimos tu información personal con terceros con fines comerciales. Nunca compartiremos tu información con anunciantes o corredores de datos. El intercambio limitado ocurre solo con proveedores de servicios que nos ayudan a operar la plataforma, bajo acuerdos de confidencialidad estrictos.',
     },
     {
       heading: 'Seguridad de datos',

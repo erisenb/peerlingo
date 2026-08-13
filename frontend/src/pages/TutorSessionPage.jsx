@@ -6,209 +6,57 @@ import { API_BASE } from '../api'
 
 const BLUE = '#008080'
 
-// Ordered section keys in lesson_data — determines tutor navigation steps
-const SECTION_ORDER = ['warm_up', 'review', 'vocabulary', 'grammar', 'guided_conversation', 'activity', 'wrap_up']
-const SECTION_LABELS = {
-  warm_up: 'Warm-Up',
-  review: 'Review',
-  vocabulary: 'Vocabulary',
-  grammar: 'Grammar',
-  guided_conversation: 'Conversation',
-  activity: 'Activity',
-  wrap_up: 'Wrap-Up',
-}
+// ── Shared bits ────────────────────────────────────────────────────────────────
 
-function SectionContent({ sectionKey, data }) {
-  if (!data) return null
-
-  switch (sectionKey) {
-    case 'warm_up':
-    case 'review':
-      return (
-        <div>
-          {data.note && <Note text={data.note} />}
-          {data.prompts?.map((p, i) => (
-            <PromptCard key={i} prompt={p} />
-          ))}
-          {data.questions?.map((q, i) => (
-            <PromptCard key={i} prompt={q} />
-          ))}
-        </div>
-      )
-
-    case 'vocabulary':
-      return (
-        <div>
-          {data.teaching_method && (
-            <div style={{ background: '#fef9c3', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#78350f', fontWeight: 600 }}>
-              Method: {data.teaching_method}
-            </div>
-          )}
-          {data.words?.map((w, i) => <VocabCard key={i} word={w} />)}
-        </div>
-      )
-
-    case 'grammar':
-      return (
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: '#1e293b', marginBottom: 10 }}>{data.concept}</div>
-          {data.note && <Note text={data.note} />}
-          {data.examples?.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Examples</div>
-              {data.examples.map((ex, i) => (
-                <div key={i} style={{ background: 'rgba(0,128,128,0.07)', borderRadius: 8, padding: '7px 12px', marginBottom: 6, fontSize: 14, color: '#0f2b3d' }}>
-                  {ex}
-                </div>
-              ))}
-            </div>
-          )}
-          {data.practice_script && <ScriptBox label="Practice Script" text={data.practice_script} />}
-          {data.follow_up && <ScriptBox label="Follow-Up" text={data.follow_up} />}
-          {data.transition && (
-            <div style={{ marginTop: 10, fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>{data.transition}</div>
-          )}
-        </div>
-      )
-
-    case 'guided_conversation':
-      return (
-        <div>
-          {data.setup && <Note text={`Setup: ${data.setup}`} />}
-          {data.prompts?.map((p, i) => <ConvPromptCard key={i} prompt={p} />)}
-          {data.tips && (
-            <div style={{ marginTop: 12, background: '#fff7ed', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#9a3412', fontWeight: 600 }}>
-              {data.tips}
-            </div>
-          )}
-        </div>
-      )
-
-    case 'activity':
-      return (
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: '#1e293b', marginBottom: 6 }}>
-            {data.name} <span style={{ fontWeight: 500, fontSize: 13, color: '#64748b' }}>({data.type})</span>
-          </div>
-          {data.setup && <Note text={`Setup: ${data.setup}`} />}
-          {data.tutor_script && <ScriptBox label="Your Script" text={data.tutor_script} />}
-          {data.debrief && <ScriptBox label="Debrief" text={data.debrief} />}
-        </div>
-      )
-
-    case 'wrap_up':
-      return (
-        <div>
-          {data.review_questions?.map((q, i) => (
-            <div key={i} style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, fontSize: 14, color: '#1e293b' }}>
-              {q}
-            </div>
-          ))}
-          {data.encouragement && (
-            <div style={{ marginTop: 12, background: '#f0fdf4', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#166534', fontWeight: 600 }}>
-              {data.encouragement}
-            </div>
-          )}
-          {data.homework && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Homework to Assign</div>
-              <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#334155' }}>
-                {data.homework}
-              </div>
-            </div>
-          )}
-        </div>
-      )
-
-    default:
-      return null
-  }
-}
-
-function TutorNotes({ notes }) {
-  if (!notes) return null
+function Callout({ icon, label, color, bg, children }) {
+  if (!children) return null
   return (
-    <div style={{ marginTop: 24, background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: 14, padding: '18px 20px' }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-        Tutor Notes
+    <div style={{ background: bg, borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+        {icon} {label}
       </div>
-      {notes.common_mistakes?.map((m, i) => (
-        <div key={i} style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginRight: 6 }}>Common mistake:</span>
-          <span style={{ fontSize: 13, color: '#374151' }}>{m}</span>
-        </div>
-      ))}
-      {notes.if_struggling && (
-        <div style={{ marginTop: 10, background: '#fff', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#374151' }}>
-          <strong>If struggling:</strong> {notes.if_struggling}
-        </div>
-      )}
-      {notes.shy_student_tips?.map((t, i) => (
-        <div key={i} style={{ marginTop: 6, fontSize: 13, color: '#374151' }}>
-          <span style={{ color: '#7c3aed', fontWeight: 700 }}>→ </span>{t}
-        </div>
-      ))}
+      <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{children}</div>
     </div>
   )
 }
 
-function Note({ text }) {
+function TutorSteps({ steps }) {
+  if (!steps?.length) return null
   return (
-    <div style={{ background: '#fef9c3', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#78350f', lineHeight: 1.6 }}>
-      {text}
-    </div>
-  )
-}
-
-function ScriptBox({ label, text }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#166534', lineHeight: 1.7 }}>
-        {text}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: BLUE, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+        What To Do
       </div>
+      <ol style={{ margin: 0, paddingLeft: 20 }}>
+        {steps.map((s, i) => (
+          <li key={i} style={{ fontSize: 14, color: '#1e293b', lineHeight: 1.9 }}>{s}</li>
+        ))}
+      </ol>
     </div>
   )
 }
+
+// ── Kind-specific main content ───────────────────────────────────────────────
 
 function PromptCard({ prompt }) {
   return (
     <div style={{ background: '#fff', border: '1.5px solid rgba(0,128,128,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 10 }}>
-      {prompt.tutor && (
-        <div style={{ marginBottom: 8 }}>
+      {prompt.say && (
+        <div style={{ marginBottom: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: BLUE, textTransform: 'uppercase' }}>Say: </span>
-          <span style={{ fontSize: 14, color: '#0f2b3d', fontStyle: 'italic' }}>"{prompt.tutor}"</span>
+          <span style={{ fontSize: 14, color: '#0f2b3d', fontStyle: 'italic' }}>"{prompt.say}"</span>
         </div>
       )}
-      {prompt.expected && (
+      {prompt.expect && (
         <div style={{ marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' }}>Expected: </span>
-          <span style={{ fontSize: 13, color: '#166534' }}>{prompt.expected}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' }}>Expect: </span>
+          <span style={{ fontSize: 13, color: '#166534' }}>{prompt.expect}</span>
         </div>
       )}
       {prompt.tip && (
-        <div style={{ fontSize: 12, color: '#78350f', background: '#fef9c3', borderRadius: 6, padding: '5px 9px', marginTop: 6 }}>
-          Tip: {prompt.tip}
+        <div style={{ fontSize: 12, color: '#78350f', background: '#fef9c3', borderRadius: 6, padding: '5px 9px', marginTop: 4 }}>
+          💡 {prompt.tip}
         </div>
-      )}
-    </div>
-  )
-}
-
-function ConvPromptCard({ prompt }) {
-  return (
-    <div style={{ background: '#fff', border: '1.5px solid rgba(0,128,128,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 10 }}>
-      {prompt.tutor && (
-        <div style={{ marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: BLUE, textTransform: 'uppercase' }}>Say: </span>
-          <span style={{ fontSize: 14, color: '#0f2b3d', fontStyle: 'italic' }}>"{prompt.tutor}"</span>
-        </div>
-      )}
-      {prompt.follow_ups?.map((f, i) => (
-        <div key={i} style={{ fontSize: 13, color: '#64748b', marginLeft: 8, marginBottom: 3 }}>→ {f}</div>
-      ))}
-      {prompt.comparison && (
-        <div style={{ fontSize: 12, color: '#7c3aed', marginTop: 6, fontStyle: 'italic' }}>{prompt.comparison}</div>
       )}
     </div>
   )
@@ -219,22 +67,177 @@ function VocabCard({ word }) {
     <div style={{ background: '#fff', border: '1.5px solid rgba(0,128,128,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
         <span style={{ fontSize: 16, fontWeight: 900, color: '#1e293b' }}>{word.word}</span>
-        <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>{word.pronunciation}</span>
+        {word.pronunciation && <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>{word.pronunciation}</span>}
       </div>
       <div style={{ fontSize: 13, color: '#334155', marginBottom: 6 }}>{word.definition}</div>
-      <div style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic', marginBottom: 8 }}>"{word.example_sentence}"</div>
-      {word.tutor_script && <ScriptBox label="Your Script" text={word.tutor_script} />}
+      {word.example_sentence && (
+        <div style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic', marginBottom: 8 }}>"{word.example_sentence}"</div>
+      )}
+      {word.tutor_script && (
+        <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', borderRadius: '0 8px 8px 0', padding: '8px 12px', fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
+          {word.tutor_script}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SectionMainContent({ section }) {
+  switch (section.kind) {
+    case 'discussion':
+      return (
+        <div>
+          {section.prompts?.map((p, i) => <PromptCard key={i} prompt={p} />)}
+        </div>
+      )
+    case 'vocabulary':
+      return (
+        <div>
+          {section.words?.map((w, i) => <VocabCard key={i} word={w} />)}
+        </div>
+      )
+    case 'concept':
+      return (
+        <div>
+          {section.concept && (
+            <div style={{ fontWeight: 800, fontSize: 15, color: '#1e293b', marginBottom: 8 }}>{section.concept}</div>
+          )}
+          {section.explanation && (
+            <div style={{ fontSize: 14, color: '#334155', marginBottom: 12, lineHeight: 1.7 }}>{section.explanation}</div>
+          )}
+          {section.examples?.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Examples</div>
+              {section.examples.map((ex, i) => (
+                <div key={i} style={{ background: 'rgba(0,128,128,0.07)', borderRadius: 8, padding: '7px 12px', marginBottom: 6, fontSize: 14, color: '#0f2b3d' }}>
+                  {ex}
+                </div>
+              ))}
+            </div>
+          )}
+          {section.practice_prompt && (
+            <div style={{ background: '#fff7ed', borderRadius: 10, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#9a3412' }}>
+              <strong>Your turn:</strong> {section.practice_prompt}
+            </div>
+          )}
+          {section.tutor_script && (
+            <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#166534', lineHeight: 1.7 }}>
+              {section.tutor_script}
+            </div>
+          )}
+        </div>
+      )
+    case 'activity':
+      return (
+        <div>
+          {section.activity_name && (
+            <div style={{ fontWeight: 800, fontSize: 15, color: '#1e293b', marginBottom: 8 }}>🎲 {section.activity_name}</div>
+          )}
+          {section.instructions && (
+            <div style={{ fontSize: 14, color: '#334155', marginBottom: 12, lineHeight: 1.7 }}>{section.instructions}</div>
+          )}
+          {section.tutor_script && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase' }}>Your Script</div>
+              <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#166534', lineHeight: 1.7 }}>
+                {section.tutor_script}
+              </div>
+            </div>
+          )}
+          {section.debrief && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase' }}>Debrief</div>
+              <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#166534', lineHeight: 1.7 }}>
+                {section.debrief}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    case 'reading':
+      return (
+        <div>
+          {section.passage && (
+            <div style={{ background: '#fff', border: '1.5px solid rgba(0,128,128,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 14, fontSize: 14, color: '#1e293b', lineHeight: 1.8, fontStyle: 'italic' }}>
+              {section.passage}
+            </div>
+          )}
+          {section.comprehension_questions?.map((q, i) => (
+            <div key={i} style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
+              <div style={{ fontSize: 14, color: '#1e293b', marginBottom: q.model_answer ? 6 : 0 }}>{q.question}</div>
+              {q.model_answer && (
+                <div style={{ fontSize: 12, color: '#16a34a' }}><strong>Model answer:</strong> {q.model_answer}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    case 'wrap_up':
+      return (
+        <div>
+          {section.review_questions?.map((q, i) => (
+            <div key={i} style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, fontSize: 14, color: '#1e293b' }}>
+              {q}
+            </div>
+          ))}
+          {section.encouragement && (
+            <div style={{ marginTop: 12, background: '#f0fdf4', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#166534', fontWeight: 600 }}>
+              {section.encouragement}
+            </div>
+          )}
+          {section.homework && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Homework to Assign</div>
+              <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#334155' }}>
+                {section.homework}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    default:
+      return null
+  }
+}
+
+function AdaptiveGuidance({ section }) {
+  const has = section.listen_for || section.common_mistakes?.length || section.if_struggling || section.if_finishes_early || section.move_on_when
+  if (!has) return null
+  return (
+    <div style={{ marginTop: 18, borderTop: '1.5px dashed rgba(0,128,128,0.25)', paddingTop: 16 }}>
+      <Callout icon="👂" label="Listen For" color="#0369a1" bg="#eff6ff">{section.listen_for}</Callout>
+      {section.common_mistakes?.length > 0 && (
+        <div style={{ background: '#fef2f2', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+            ⚠️ Common Mistakes
+          </div>
+          {section.common_mistakes.map((m, i) => (
+            <div key={i} style={{ fontSize: 13, color: '#334155', marginBottom: 6, lineHeight: 1.6 }}>
+              <span style={{ color: '#dc2626' }}>{m.mistake}</span>
+              {m.fix && <span> — <span style={{ color: '#166534' }}>{m.fix}</span></span>}
+            </div>
+          ))}
+        </div>
+      )}
+      <Callout icon="🐢" label="If Struggling" color="#7c3aed" bg="#faf5ff">{section.if_struggling}</Callout>
+      <Callout icon="⚡" label="If Finished Early" color="#c2410c" bg="#fff7ed">{section.if_finishes_early}</Callout>
+      <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 10, padding: '10px 14px' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+          ✅ Move On When
+        </div>
+        <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}>{section.move_on_when}</div>
+      </div>
     </div>
   )
 }
 
 function StudentSlidePreview({ slides, currentStep }) {
-  const slide = slides?.[currentStep]
+  const slide = slides?.[Math.min(currentStep, (slides?.length || 1) - 1)]
   if (!slide) return null
   return (
     <div style={{ background: 'rgba(0,128,128,0.04)', border: '1.5px solid rgba(0,128,128,0.2)', borderRadius: 14, padding: '16px 20px' }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: BLUE, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-        Student Screen (Slide {slide.slide})
+        Student Screen
       </div>
       <div style={{ fontSize: 22, textAlign: 'center', marginBottom: 8 }}>{slide.emoji}</div>
       <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b', textAlign: 'center', marginBottom: 10 }}>{slide.title}</div>
@@ -253,7 +256,6 @@ export default function TutorSessionPage() {
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [stepping, setStepping] = useState(false)
-  const [showNotes, setShowNotes] = useState(false)
 
   useEffect(() => {
     if (!token || !sessionId) return
@@ -267,13 +269,12 @@ export default function TutorSessionPage() {
   }, [sessionId, token])
 
   const lessonData = session?.lesson?.data || {}
+  const sections = lessonData.sections || []
   const studentSlides = lessonData.student_slides || []
 
-  // Build ordered list of present sections for this lesson
-  const presentSections = SECTION_ORDER.filter(k => lessonData[k])
-  const totalSteps = presentSections.length
-  const currentSection = presentSections[session?.current_step ?? 0] || null
+  const totalSteps = sections.length
   const stepIndex = session?.current_step ?? 0
+  const currentSection = sections[stepIndex] || null
 
   async function goToStep(newStep) {
     if (!session || stepping) return
@@ -357,18 +358,30 @@ export default function TutorSessionPage() {
           )}
         </div>
 
-        {/* Learning objectives */}
-        {lessonData.learning_objectives?.length > 0 && (
+        {/* Learning objectives + completion criteria */}
+        {(lessonData.learning_objectives?.length > 0 || lessonData.completion_criteria) && (
           <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', marginBottom: 24, border: '1px solid rgba(0,128,128,0.18)' }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: BLUE, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-              Learning Objectives
-            </div>
-            {lessonData.learning_objectives.map((obj, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: '#22c55e', fontWeight: 700, flexShrink: 0 }}>✓</span>
-                <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{obj}</span>
+            {lessonData.learning_objectives?.length > 0 && (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 800, color: BLUE, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                  Learning Objectives
+                </div>
+                {lessonData.learning_objectives.map((obj, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                    <span style={{ color: '#22c55e', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{obj}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {lessonData.completion_criteria && (
+              <div style={{ marginTop: lessonData.learning_objectives?.length ? 12 : 0, paddingTop: lessonData.learning_objectives?.length ? 12 : 0, borderTop: lessonData.learning_objectives?.length ? '1px solid rgba(0,128,128,0.12)' : 'none' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+                  Lesson Complete When
+                </div>
+                <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{lessonData.completion_criteria}</div>
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -379,15 +392,15 @@ export default function TutorSessionPage() {
             {/* Step navigation tabs */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,128,128,0.18)', marginBottom: 20, overflow: 'hidden' }}>
               <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid rgba(0,128,128,0.12)' }}>
-                {presentSections.map((key, i) => (
-                  <button key={key} onClick={() => goToStep(i)} style={{
+                {sections.map((s, i) => (
+                  <button key={s.key || i} onClick={() => goToStep(i)} style={{
                     padding: '12px 18px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                     fontWeight: 700, fontSize: 13,
                     background: stepIndex === i ? 'rgba(0,128,128,0.08)' : 'transparent',
                     color: stepIndex === i ? BLUE : '#64748b',
                     borderBottom: stepIndex === i ? `3px solid ${BLUE}` : '3px solid transparent',
                   }}>
-                    {stepIndex > i ? '✓ ' : stepIndex === i ? '▶ ' : ''}{SECTION_LABELS[key] || key}
+                    {stepIndex > i ? '✓ ' : stepIndex === i ? '▶ ' : ''}{s.label || s.key}
                   </button>
                 ))}
               </div>
@@ -396,15 +409,22 @@ export default function TutorSessionPage() {
               <div style={{ padding: '20px 22px' }}>
                 {currentSection ? (
                   <>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', marginBottom: 16 }}>
-                      {SECTION_LABELS[currentSection]}
-                      {lessonData[currentSection]?.duration && (
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>
+                      {currentSection.label}
+                      {currentSection.duration_minutes != null && (
                         <span style={{ fontSize: 13, fontWeight: 500, color: '#94a3b8', marginLeft: 10 }}>
-                          {lessonData[currentSection].duration}
+                          {currentSection.duration_minutes} min
                         </span>
                       )}
                     </div>
-                    <SectionContent sectionKey={currentSection} data={lessonData[currentSection]} />
+                    {currentSection.goal && (
+                      <div style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic', marginBottom: 14 }}>
+                        Goal: {currentSection.goal}
+                      </div>
+                    )}
+                    <TutorSteps steps={currentSection.tutor_steps} />
+                    <SectionMainContent section={currentSection} />
+                    <AdaptiveGuidance section={currentSection} />
                   </>
                 ) : (
                   <div style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center', padding: '20px 0' }}>
@@ -446,19 +466,6 @@ export default function TutorSessionPage() {
                 </button>
               )}
             </div>
-
-            {/* Tutor notes toggle */}
-            {lessonData.tutor_notes && (
-              <div style={{ marginTop: 20 }}>
-                <button onClick={() => setShowNotes(n => !n)} style={{
-                  background: 'none', border: '1.5px solid #e9d5ff', borderRadius: 10,
-                  padding: '8px 16px', fontSize: 13, fontWeight: 700, color: '#7c3aed', cursor: 'pointer',
-                }}>
-                  {showNotes ? '▲ Hide Tutor Notes' : '▼ Show Tutor Notes'}
-                </button>
-                {showNotes && <TutorNotes notes={lessonData.tutor_notes} />}
-              </div>
-            )}
           </div>
 
           {/* Right sidebar: student slide preview + materials */}

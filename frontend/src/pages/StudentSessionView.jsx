@@ -43,6 +43,7 @@ export default function StudentSessionView() {
 
   const lessonData = session?.lesson?.data || {}
   const slides = lessonData.student_slides || []
+  const sections = lessonData.sections || []
   const currentStep = session?.current_step ?? 0
 
   if (loading) return (
@@ -64,8 +65,9 @@ export default function StudentSessionView() {
   const lesson = session.lesson
   const isComplete = session.completed
 
-  // Vocabulary from lesson_data (student-safe — tutor fields already stripped server-side)
-  const vocabWords = lessonData.vocabulary?.words || []
+  // Vocabulary from all sections (student-safe — tutor fields already stripped server-side)
+  const vocabWords = sections.flatMap(s => s.words || [])
+  const currentSection = sections[Math.min(currentStep, sections.length - 1)] || null
 
   return (
     <div style={{ minHeight: '100vh', background: '#F1F8F9', fontFamily: "'Times New Roman', Times, serif" }}>
@@ -141,6 +143,42 @@ export default function StudentSessionView() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Current activity (driven by tutor's step) */}
+        {currentSection && (currentSection.passage || currentSection.instructions || currentSection.explanation) && (
+          <div style={{ marginBottom: 28, background: '#fff', border: `2px solid ${BLUE}`, borderRadius: 16, padding: '18px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: BLUE, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+              {currentSection.label || 'Activity'}
+            </div>
+            {currentSection.activity_name && (
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 8 }}>{currentSection.activity_name}</div>
+            )}
+            {currentSection.concept && (
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 8 }}>{currentSection.concept}</div>
+            )}
+            {currentSection.explanation && (
+              <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.7, marginBottom: 10 }}>{currentSection.explanation}</div>
+            )}
+            {currentSection.instructions && (
+              <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.7, marginBottom: 10 }}>{currentSection.instructions}</div>
+            )}
+            {currentSection.examples?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                {currentSection.examples.map((ex, i) => (
+                  <div key={i} style={{ background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '7px 12px', marginBottom: 5, fontSize: 13, color: '#0f2b3d' }}>{ex}</div>
+                ))}
+              </div>
+            )}
+            {currentSection.passage && (
+              <div style={{ background: 'rgba(0,128,128,0.05)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#1e293b', lineHeight: 1.8, fontStyle: 'italic', marginBottom: 10 }}>
+                {currentSection.passage}
+              </div>
+            )}
+            {currentSection.comprehension_questions?.map((q, i) => (
+              <div key={i} style={{ fontSize: 14, color: '#1e293b', padding: '6px 0' }}>• {q.question}</div>
+            ))}
           </div>
         )}
 

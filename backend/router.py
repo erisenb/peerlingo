@@ -1433,13 +1433,19 @@ def get_curriculum_by_level(level: str, db: Session = Depends(get_db)):
         hw = db.query(models.VPHomeworkAssignment).filter(
             models.VPHomeworkAssignment.lesson_id == lesson.id
         ).first()
+        # Public/unauthenticated route — tutor-only teaching content (scripts,
+        # struggling-student guidance, etc.) must never reach this response.
+        public_lesson_data = (
+            json.dumps(_student_lesson_data(json.loads(lesson.lesson_data)))
+            if lesson.lesson_data else None
+        )
         lessons_out.append({
             "id": lesson.id,
             "lesson_number": lesson.lesson_number,
             "title": lesson.title,
             "outline": lesson.outline,
             "outline_es": lesson.outline_es,
-            "lesson_data": lesson.lesson_data,
+            "lesson_data": public_lesson_data,
             "vocabulary": hw.vocabulary if hw else "[]",
             "expressions": hw.expressions if hw else "[]",
         })
@@ -1487,25 +1493,26 @@ def get_my_curriculum(current_user: models.User = Depends(get_current_user), db:
             "level": curriculum.level,
             "description": curriculum.description,
         },
-        "current_lesson_number": progress.current_lesson_number,
+        # Capped at len(lessons): once the curriculum is finished, progress can sit
+        # one past the last lesson internally (see complete_session) so tutor-side
+        # "is it complete" checks work; this view's contract is current_lesson_number
+        # never exceeds the lesson count, so the finished state renders correctly.
+        "current_lesson_number": min(progress.current_lesson_number, len(lessons)),
         "lessons": lessons_out,
     }
 
 @router.post("/api/curriculum/advance")
 def advance_lesson(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Retired: curriculum progress now advances only when a tutor completes
+    a live session (see POST /api/sessions/{id}/complete), so progress always
+    reflects a lesson the student actually attended. Kept as a route (rather
+    than removed outright) so old cached frontend bundles fail loudly instead
+    of silently corrupting progress."""
     _require_student(current_user)
-    progress = _get_active_progress(current_user, db)
-    if not progress:
-        raise HTTPException(status_code=404, detail="No curriculum enrolled")
-    total = db.query(models.VPCurriculumLesson).filter(
-        models.VPCurriculumLesson.curriculum_id == progress.curriculum_id
-    ).count()
-    if progress.current_lesson_number < total:
-        progress.current_lesson_number += 1
-        if progress.current_lesson_number == total:
-            progress.completed_at = datetime.utcnow()
-        db.commit()
-    return {"current_lesson_number": progress.current_lesson_number}
+    raise HTTPException(
+        status_code=403,
+        detail="Lesson progress is now managed automatically by your tutor during your sessions.",
+    )
 
 @router.put("/api/profile/tutor-survey", response_model=UserOut)
 def submit_tutor_survey(body: TutorSurveyRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -2238,6 +2245,12 @@ def list_pairings(current_user: models.User = Depends(get_current_user), db: Ses
 @router.post("/api/admin/pairings", response_model=PairingOut, status_code=201)
 def create_pairing(body: PairingBody, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     _require_admin(current_user)
+    tutor = db.query(models.User).filter_by(id=body.tutor_id, role=models.UserRole.tutor).first()
+    if not tutor:
+        raise HTTPException(status_code=400, detail="tutor_id must reference an existing tutor")
+    student = db.query(models.User).filter_by(id=body.student_id, role=models.UserRole.student).first()
+    if not student:
+        raise HTTPException(status_code=400, detail="student_id must reference an existing student")
     existing = db.query(models.TutorStudentPairing).filter(
         models.TutorStudentPairing.tutor_id == body.tutor_id,
         models.TutorStudentPairing.student_id == body.student_id,
@@ -2246,9 +2259,7 @@ def create_pairing(body: PairingBody, current_user: models.User = Depends(get_cu
         raise HTTPException(status_code=400, detail="This pairing already exists")
     pairing = models.TutorStudentPairing(tutor_id=body.tutor_id, student_id=body.student_id)
     db.add(pairing); db.commit(); db.refresh(pairing)
-    student = db.query(models.User).filter_by(id=body.student_id).first()
-    if student:
-        _ensure_student_enrolled(student, db)
+    _ensure_student_enrolled(student, db)
     return _pairing_out(pairing, db)
 
 @router.delete("/api/admin/pairings/{pairing_id}", status_code=204)
@@ -2280,9 +2291,14 @@ def delete_user(user_id: int, current_user: models.User = Depends(get_current_us
         db.query(models.Assignment).filter(models.Assignment.tutor_id == user_id).delete(synchronize_session=False)
         db.query(models.Meeting).filter(models.Meeting.tutor_id == user_id).delete(synchronize_session=False)
         db.query(models.Lesson).filter(models.Lesson.tutor_id == user_id).delete(synchronize_session=False)
+        db.query(models.VPSession).filter(models.VPSession.tutor_id == user_id).delete(synchronize_session=False)
     else:
         db.query(models.AssignmentCompletion).filter(models.AssignmentCompletion.student_id == user_id).delete(synchronize_session=False)
         db.query(models.LessonProgress).filter(models.LessonProgress.student_id == user_id).delete(synchronize_session=False)
+        db.query(models.VPSession).filter(models.VPSession.student_id == user_id).delete(synchronize_session=False)
+        db.query(models.VPStudentProgress).filter(models.VPStudentProgress.student_id == user_id).delete(synchronize_session=False)
+        db.query(models.VPPlacementAssessment).filter(models.VPPlacementAssessment.student_id == user_id).delete(synchronize_session=False)
+        db.query(models.StudentCurriculum).filter(models.StudentCurriculum.student_id == user_id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
 
@@ -2436,10 +2452,17 @@ def send_message(other_user_id: int, body: MessageBody, current_user: models.Use
 
 # Tutor-only fields to strip when serving lesson content to students.
 _TUTOR_ONLY_KEYS = frozenset({
-    'note', 'tip', 'tutor_script', 'visual', 'teaching_method',
-    'practice_script', 'follow_up', 'transition', 'setup', 'debrief', 'tips',
-    'tutor', 'expected', 'follow_ups', 'comparison',
-    'shy_student_tips', 'common_mistakes', 'if_struggling', 'alternatives',
+    # v3 schema — universal per-section tutor fields
+    'goal', 'tutor_steps', 'listen_for', 'common_mistakes', 'if_struggling',
+    'if_finishes_early', 'move_on_when',
+    # v3 schema — kind-specific tutor-only content
+    'prompts', 'tutor_script', 'debrief', 'model_answer',
+    # lesson-level tutor prep/scoring notes
+    'materials_needed', 'completion_criteria',
+    # legacy (v2) keys — kept for backward compatibility with any un-migrated lessons
+    'note', 'tip', 'visual', 'teaching_method', 'practice_script', 'follow_up',
+    'transition', 'setup', 'tips', 'tutor', 'expected', 'follow_ups',
+    'comparison', 'shy_student_tips', 'alternatives',
 })
 
 def _student_lesson_data(data: dict) -> dict:
@@ -2567,9 +2590,17 @@ def create_session(body: SessionBody,
     if not pairing:
         raise HTTPException(status_code=403, detail="Not your student")
 
+    student = db.query(models.User).filter_by(id=body.student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
     lesson = db.query(models.VPCurriculumLesson).filter_by(id=body.lesson_id).first()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+
+    progress = _get_active_progress(student, db)
+    if not progress or lesson.curriculum_id != progress.curriculum_id:
+        raise HTTPException(status_code=400, detail="Lesson does not belong to this student's current curriculum")
 
     # Reuse existing active session for same tutor+student+lesson
     existing = db.query(models.VPSession).filter_by(
@@ -2606,6 +2637,13 @@ def get_my_session(current_user: models.User = Depends(get_current_user),
     return _session_out(session, lesson, for_student=True)
 
 
+def _tutor_paired_with(tutor_id: int, student_id: int, db: Session) -> bool:
+    """Whether a live (non-revoked) pairing exists between this tutor and student."""
+    return db.query(models.TutorStudentPairing).filter_by(
+        tutor_id=tutor_id, student_id=student_id
+    ).first() is not None
+
+
 @router.get("/api/sessions/{session_id}")
 def get_session(session_id: int,
                 current_user: models.User = Depends(get_current_user),
@@ -2615,7 +2653,8 @@ def get_session(session_id: int,
         raise HTTPException(status_code=404, detail="Session not found")
 
     is_tutor = (current_user.role == models.UserRole.tutor and
-                session.tutor_id == current_user.id)
+                session.tutor_id == current_user.id and
+                _tutor_paired_with(current_user.id, session.student_id, db))
     is_student = (current_user.role == models.UserRole.student and
                   session.student_id == current_user.id)
     is_admin = current_user.role == models.UserRole.admin
@@ -2644,8 +2683,14 @@ def update_session_step(session_id: int, body: StepBody,
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if not _tutor_paired_with(current_user.id, session.student_id, db):
+        raise HTTPException(status_code=403, detail="Not your student")
     if session.completed:
         raise HTTPException(status_code=400, detail="Session already completed")
+    lesson = db.query(models.VPCurriculumLesson).filter_by(id=session.lesson_id).first()
+    total_steps = len(json.loads(lesson.lesson_data).get('sections', [])) if lesson and lesson.lesson_data else 0
+    if total_steps and not (0 <= body.current_step < total_steps):
+        raise HTTPException(status_code=400, detail=f"current_step must be between 0 and {total_steps - 1}")
     session.current_step = body.current_step
     db.commit()
     return {"ok": True, "current_step": session.current_step}
@@ -2661,6 +2706,8 @@ def complete_session(session_id: int,
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if not _tutor_paired_with(current_user.id, session.student_id, db):
+        raise HTTPException(status_code=403, detail="Not your student")
     if session.completed:
         return {"ok": True, "already_completed": True}
 
@@ -2678,9 +2725,8 @@ def complete_session(session_id: int,
             total = db.query(models.VPCurriculumLesson).filter_by(
                 curriculum_id=lesson.curriculum_id
             ).count()
-            if progress.current_lesson_number < total:
-                progress.current_lesson_number += 1
-            else:
+            progress.current_lesson_number += 1
+            if progress.current_lesson_number > total:
                 progress.completed_at = datetime.utcnow()
             db.commit()
 

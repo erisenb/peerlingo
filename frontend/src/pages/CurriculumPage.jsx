@@ -39,28 +39,6 @@ function SectionBlock({ icon, title, duration, accentColor = '#008080', children
   )
 }
 
-function PromptCard({ prompt }) {
-  return (
-    <div style={{ background: 'rgba(0,128,128,0.04)', border: '1px solid rgba(0,128,128,0.12)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#008080', marginBottom: 4 }}>TUTOR SAYS</div>
-      <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, fontStyle: 'italic', marginBottom: prompt.expected ? 8 : 0 }}>
-        "{prompt.tutor}"
-      </div>
-      {prompt.expected && (
-        <>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#7a9cac', marginBottom: 3 }}>STUDENT LIKELY SAYS</div>
-          <div style={{ fontSize: 13, color: '#3d6275' }}>{prompt.expected}</div>
-        </>
-      )}
-      {prompt.tip && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 6, padding: '5px 9px' }}>
-          💡 {prompt.tip}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function VocabGrid({ words, isMobile }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
@@ -85,31 +63,92 @@ function VocabGrid({ words, isMobile }) {
   )
 }
 
-function ConversationPrompt({ prompt, index }) {
+// ── Full structured lesson view ───────────────────────────────────────────────
+// Renders the same student-safe lesson_data (sections[]) served by the app's
+// session endpoints — tutor-only fields (scripts, adaptive guidance) are
+// already stripped server-side, so this is a public preview by construction,
+// not by omission here.
+
+const SECTION_ICON = { discussion: '💬', vocabulary: '📚', concept: '✏️', activity: '🎮', reading: '📖', wrap_up: '✅' }
+const SECTION_COLOR = { discussion: '#2563eb', vocabulary: '#008080', concept: '#7c3aed', activity: '#FF6F61', reading: '#0f2b3d', wrap_up: '#16a34a' }
+
+function SectionPreview({ section, isMobile }) {
+  const hasContent =
+    section.words?.length || section.concept || section.explanation || section.examples?.length ||
+    section.activity_name || section.instructions || section.passage || section.comprehension_questions?.length ||
+    section.review_questions?.length || section.encouragement || section.homework
+
   return (
-    <div style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)', borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
-      <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, fontStyle: 'italic', marginBottom: 8 }}>
-        "{prompt.tutor}"
-      </div>
-      {prompt.follow_ups?.length > 0 && (
-        <div style={{ marginBottom: prompt.comparison ? 8 : 0 }}>
-          {prompt.follow_ups.map((f, j) => (
-            <div key={j} style={{ fontSize: 13, color: '#3d6275', paddingLeft: 12, borderLeft: '2px solid rgba(37,99,235,0.25)', marginBottom: 3 }}>
-              → {f}
-            </div>
+    <SectionBlock
+      icon={SECTION_ICON[section.kind] || '📌'}
+      title={section.label || section.key}
+      duration={section.duration_minutes ? `${section.duration_minutes} min` : undefined}
+      accentColor={SECTION_COLOR[section.kind] || '#008080'}
+    >
+      {section.kind === 'vocabulary' && section.words?.length > 0 && (
+        <VocabGrid words={section.words} isMobile={isMobile} />
+      )}
+
+      {section.kind === 'concept' && (
+        <>
+          {section.concept && <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', marginBottom: 8 }}>{section.concept}</div>}
+          {section.explanation && <div style={{ fontSize: 13, color: '#7a9cac', lineHeight: 1.6, marginBottom: 12 }}>{section.explanation}</div>}
+          {section.examples?.map((ex, i) => (
+            <div key={i} style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, marginBottom: 4, paddingLeft: 12, borderLeft: '2px solid rgba(124,58,237,0.3)' }}>{ex}</div>
           ))}
+        </>
+      )}
+
+      {section.kind === 'activity' && (
+        <>
+          {section.activity_name && <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', marginBottom: 8 }}>{section.activity_name}</div>}
+          {section.instructions && <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65 }}>{section.instructions}</div>}
+        </>
+      )}
+
+      {section.kind === 'reading' && (
+        <>
+          {section.passage && (
+            <div style={{ fontSize: 14, color: '#0f2b3d', fontStyle: 'italic', lineHeight: 1.75, background: 'rgba(0,128,128,0.04)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+              {section.passage}
+            </div>
+          )}
+          {section.comprehension_questions?.map((q, i) => (
+            <div key={i} style={{ fontSize: 14, color: '#3d6275', marginBottom: 5 }}>• {q.question}</div>
+          ))}
+        </>
+      )}
+
+      {section.kind === 'wrap_up' && (
+        <>
+          {section.review_questions?.length > 0 && (
+            <ol style={{ margin: '0 0 12px', paddingLeft: 20 }}>
+              {section.review_questions.map((q, i) => (
+                <li key={i} style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65, marginBottom: 5 }}>{q}</li>
+              ))}
+            </ol>
+          )}
+          {section.encouragement && (
+            <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, padding: '10px 13px', background: 'rgba(22,163,74,0.06)', borderRadius: 8, borderLeft: '3px solid #16a34a', marginBottom: 10 }}>
+              💚 {section.encouragement}
+            </div>
+          )}
+          {section.homework && (
+            <div style={{ fontSize: 14, color: '#3d6275', padding: '10px 13px', background: 'rgba(0,128,128,0.04)', borderRadius: 8 }}>
+              <span style={{ fontWeight: 700, color: '#008080' }}>Homework: </span>{section.homework}
+            </div>
+          )}
+        </>
+      )}
+
+      {!hasContent && (
+        <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic' }}>
+          Led live by the tutor during the session.
         </div>
       )}
-      {prompt.comparison && (
-        <div style={{ fontSize: 12, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 6, padding: '5px 9px' }}>
-          🌎 {prompt.comparison}
-        </div>
-      )}
-    </div>
+    </SectionBlock>
   )
 }
-
-// ── Full structured lesson view ───────────────────────────────────────────────
 
 function StructuredLesson({ ld, isMobile }) {
   return (
@@ -139,201 +178,9 @@ function StructuredLesson({ ld, isMobile }) {
         </SectionBlock>
       )}
 
-      {/* Materials */}
-      {ld.materials_needed?.length > 0 && (
-        <SectionBlock icon="📦" title="Materials Needed" accentColor="#7a9cac">
-          {ld.materials_needed.map((m, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 5 }}>
-              <span style={{ color: '#008080', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span style={{ fontSize: 13, color: '#3d6275' }}>{m}</span>
-            </div>
-          ))}
-        </SectionBlock>
-      )}
-
-      {/* Warm-up */}
-      {ld.warm_up && (
-        <SectionBlock icon="☀️" title="Warm-Up" duration={ld.warm_up.duration} accentColor="#FF6F61">
-          {ld.warm_up.note && (
-            <div style={{ fontSize: 13, color: '#FF6F61', background: 'rgba(255,111,97,0.06)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
-              {ld.warm_up.note}
-            </div>
-          )}
-          {ld.warm_up.prompts?.map((p, i) => <PromptCard key={i} prompt={p} />)}
-        </SectionBlock>
-      )}
-
-      {/* Review */}
-      {ld.review && ld.review.questions?.length > 0 && (
-        <SectionBlock icon="🔄" title="Review from Last Lesson" duration={ld.review.duration} accentColor="#7c3aed">
-          {ld.review.note && (
-            <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic', marginBottom: 10 }}>{ld.review.note}</div>
-          )}
-          <ol style={{ margin: 0, paddingLeft: 20 }}>
-            {ld.review.questions.map((q, i) => (
-              <li key={i} style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65, marginBottom: 5 }}>{q}</li>
-            ))}
-          </ol>
-        </SectionBlock>
-      )}
-      {ld.review && !ld.review.questions?.length && ld.review.note && (
-        <SectionBlock icon="🔄" title="Review" duration={ld.review.duration} accentColor="#7a9cac">
-          <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic' }}>{ld.review.note}</div>
-        </SectionBlock>
-      )}
-
-      {/* Vocabulary */}
-      {ld.vocabulary?.words?.length > 0 && (
-        <SectionBlock icon="📚" title="New Vocabulary" duration={ld.vocabulary.duration} accentColor="#008080">
-          {ld.vocabulary.teaching_method && (
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.06)', borderRadius: 8, padding: '7px 11px', marginBottom: 12 }}>
-              Method: {ld.vocabulary.teaching_method}
-            </div>
-          )}
-          <VocabGrid words={ld.vocabulary.words} isMobile={isMobile} />
-        </SectionBlock>
-      )}
-
-      {/* Grammar */}
-      {ld.grammar && (
-        <SectionBlock icon="✏️" title="Grammar in Context" duration={ld.grammar.duration} accentColor="#7c3aed">
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', marginBottom: 8 }}>{ld.grammar.concept}</div>
-          {ld.grammar.note && (
-            <div style={{ fontSize: 13, color: '#7a9cac', fontStyle: 'italic', marginBottom: 12 }}>{ld.grammar.note}</div>
-          )}
-          {ld.grammar.examples?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Examples</div>
-              {ld.grammar.examples.map((ex, i) => (
-                <div key={i} style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, marginBottom: 4, paddingLeft: 12, borderLeft: '2px solid rgba(124,58,237,0.3)' }}>
-                  {ex}
-                </div>
-              ))}
-            </div>
-          )}
-          {ld.grammar.practice_script && (
-            <div style={{ background: 'rgba(124,58,237,0.05)', borderRadius: 10, padding: '11px 13px' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Practice Script</div>
-              <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.65 }}>{ld.grammar.practice_script}</div>
-            </div>
-          )}
-        </SectionBlock>
-      )}
-
-      {/* Guided Conversation */}
-      {ld.guided_conversation && (
-        <SectionBlock icon="💬" title="Guided Conversation" duration={ld.guided_conversation.duration} accentColor="#2563eb">
-          {ld.guided_conversation.setup && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', background: 'rgba(37,99,235,0.05)', borderRadius: 8, padding: '8px 12px', borderLeft: '3px solid #2563eb', marginBottom: 12 }}>
-              Setup: {ld.guided_conversation.setup}
-            </div>
-          )}
-          {ld.guided_conversation.prompts?.map((p, i) => (
-            <ConversationPrompt key={i} prompt={p} index={i} />
-          ))}
-          {ld.guided_conversation.tips && (
-            <div style={{ fontSize: 13, color: '#3d6275', fontStyle: 'italic', padding: '9px 13px', background: 'rgba(0,128,128,0.04)', borderRadius: 8, borderLeft: '3px solid #008080' }}>
-              💡 {ld.guided_conversation.tips}
-            </div>
-          )}
-        </SectionBlock>
-      )}
-
-      {/* Activity */}
-      {ld.activity && (
-        <SectionBlock icon="🎮" title={`Activity: ${ld.activity.name}`} duration={ld.activity.duration} accentColor="#FF6F61">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: '#FF6F61', borderRadius: 20, padding: '3px 10px' }}>{ld.activity.type}</span>
-            {ld.activity.vocabulary_focus?.map((v, i) => (
-              <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#FF6F61', background: 'rgba(255,111,97,0.1)', borderRadius: 20, padding: '3px 10px' }}>{v}</span>
-            ))}
-          </div>
-          {ld.activity.setup && (
-            <div style={{ fontSize: 13, color: '#3d6275', marginBottom: 10 }}>{ld.activity.setup}</div>
-          )}
-          {ld.activity.tutor_script && (
-            <div style={{ background: 'rgba(255,111,97,0.06)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#FF6F61', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tutor Script</div>
-              <div style={{ fontSize: 14, color: '#3d6275', lineHeight: 1.7 }}>{ld.activity.tutor_script}</div>
-            </div>
-          )}
-          {ld.activity.debrief && (
-            <div style={{ fontSize: 13, color: '#3d6275', fontStyle: 'italic' }}>✨ {ld.activity.debrief}</div>
-          )}
-        </SectionBlock>
-      )}
-
-      {/* Wrap-up */}
-      {ld.wrap_up && (
-        <SectionBlock icon="✅" title="Wrap-Up" duration={ld.wrap_up.duration} accentColor="#16a34a">
-          {ld.wrap_up.review_questions?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Review Questions</div>
-              {ld.wrap_up.review_questions.map((q, i) => (
-                <div key={i} style={{ fontSize: 14, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8 }}>
-                  <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
-                  <span>{q}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {ld.wrap_up.encouragement && (
-            <div style={{ fontSize: 14, color: '#0f2b3d', fontWeight: 600, padding: '10px 13px', background: 'rgba(22,163,74,0.06)', borderRadius: 8, borderLeft: '3px solid #16a34a', marginBottom: 10 }}>
-              💚 {ld.wrap_up.encouragement}
-            </div>
-          )}
-          {ld.wrap_up.homework && (
-            <div style={{ fontSize: 14, color: '#3d6275', padding: '10px 13px', background: 'rgba(0,128,128,0.04)', borderRadius: 8 }}>
-              <span style={{ fontWeight: 700, color: '#008080' }}>Homework: </span>{ld.wrap_up.homework}
-            </div>
-          )}
-        </SectionBlock>
-      )}
-
-      {/* Tutor Notes */}
-      {ld.tutor_notes && (
-        <SectionBlock icon="📝" title="Tutor Notes" accentColor="#0f2b3d">
-          {ld.tutor_notes.common_mistakes?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Common Mistakes to Watch For</div>
-              {ld.tutor_notes.common_mistakes.map((m, i) => (
-                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ color: '#FF6F61', flexShrink: 0 }}>⚠</span>
-                  <span>{m}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {ld.tutor_notes.shy_student_tips?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>For Shy Students</div>
-              {ld.tutor_notes.shy_student_tips.map((t, i) => (
-                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ color: '#008080', flexShrink: 0 }}>→</span>
-                  <span>{t}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {ld.tutor_notes.if_struggling && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>If Student Struggles</div>
-              <div style={{ fontSize: 13, color: '#3d6275', padding: '8px 12px', background: 'rgba(37,99,235,0.05)', borderRadius: 8 }}>{ld.tutor_notes.if_struggling}</div>
-            </div>
-          )}
-          {ld.tutor_notes.alternatives?.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2b3d', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alternative Approaches</div>
-              {ld.tutor_notes.alternatives.map((a, i) => (
-                <div key={i} style={{ fontSize: 13, color: '#3d6275', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ color: '#7c3aed', flexShrink: 0 }}>•</span>
-                  <span>{a}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionBlock>
-      )}
+      {ld.sections?.map((section, i) => (
+        <SectionPreview key={section.key || i} section={section} isMobile={isMobile} />
+      ))}
     </div>
   )
 }

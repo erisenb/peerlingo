@@ -1364,25 +1364,12 @@ function CurriculoTab({ token }) {
   const [data, setData] = useState(null)
   const [loadingC, setLoadingC] = useState(true)
   const [expanded, setExpanded] = useState(null)
-  const [advancing, setAdvancing] = useState(false)
   const { lang } = useLanguage()
 
   useEffect(() => {
     fetch(`${API_BASE}/api/curriculum/mine`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(setData).finally(() => setLoadingC(false))
   }, [])
-
-  async function handleAdvance() {
-    setAdvancing(true)
-    try {
-      const r = await fetch(`${API_BASE}/api/curriculum/advance`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
-      })
-      const d = await r.json()
-      setData(prev => ({ ...prev, current_lesson_number: d.current_lesson_number }))
-      setExpanded(null)
-    } finally { setAdvancing(false) }
-  }
 
   if (loadingC) return <p style={{ textAlign: 'center', color: '#94a3b8', padding: 40 }}>Cargando currículo…</p>
   if (!data?.enrolled) return (
@@ -1503,12 +1490,11 @@ function CurriculoTab({ token }) {
                     </div>
                   )}
 
-                  {/* Advance button — only on current lesson */}
+                  {/* Progress now advances only when your tutor completes this lesson live */}
                   {isCurrent && current_lesson_number < total && (
-                    <button onClick={handleAdvance} disabled={advancing}
-                      style={{ alignSelf: 'flex-end', background: advancing ? 'rgba(0,128,128,0.4)' : '#008080', color: '#fff', border: 'none', borderRadius: 12, padding: '11px 24px', fontSize: 14, fontWeight: 800, cursor: advancing ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(0,128,128,0.25)' }}>
-                      {advancing ? 'Actualizando…' : 'Marcar como completada → Siguiente lección'}
-                    </button>
+                    <div style={{ textAlign: 'center', padding: '12px 16px', background: 'rgba(0,128,128,0.05)', borderRadius: 12, fontSize: 13, color: '#0f2b3d' }}>
+                      Tu tutor marcará esta lección como completada durante su próxima sesión juntos.
+                    </div>
                   )}
                   {isCurrent && current_lesson_number === total && (
                     <div style={{ textAlign: 'center', padding: '12px 0' }}>

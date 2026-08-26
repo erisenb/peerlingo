@@ -34,6 +34,12 @@ def _load_all_lessons() -> dict:
             data[('advanced', number)] = content
     except ImportError:
         pass
+    try:
+        from vp_lessons_foundational import LESSONS as foundational_lessons
+        for number, content in foundational_lessons.items():
+            data[('foundational', number)] = content
+    except ImportError:
+        pass
     return data
 
 

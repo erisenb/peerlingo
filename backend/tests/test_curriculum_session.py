@@ -52,6 +52,43 @@ def test_non_admin_cannot_set_level(client, tutor1_token, student1_id):
     assert r.status_code == 403
 
 
+# ── Unified curriculum ────────────────────────────────────────────────────────
+# All three legacy levels must resolve to the exact same single curriculum —
+# level no longer selects between separate tracks.
+
+def test_all_levels_resolve_to_the_same_unified_curriculum(client, admin_token, tutor1_token,
+                                                             tutor2_token, tutor3_token, student1_id,
+                                                             student2_id, student3_id):
+    for level, tutor_tok, sid in [
+        ("beginner", tutor1_token, student1_id),
+        ("intermediate", tutor2_token, student2_id),
+        ("advanced", tutor3_token, student3_id),
+    ]:
+        client.patch(f"/api/admin/students/{sid}/level", json={"level": level}, headers=auth_headers(admin_token))
+        prog = client.get(f"/api/tutor/students/{sid}/progress", headers=auth_headers(tutor_tok)).json()
+        assert prog["curriculum_title"] == "Foundational English"
+        assert prog["curriculum_level"] == "foundational"
+        assert prog["total_lessons"] == 20
+
+
+def test_unified_curriculum_lesson_1_is_emotions(client):
+    r = client.get("/api/curriculum/by-level/foundational")
+    data = r.json()
+    lesson1 = next(l for l in data["lessons"] if l["lesson_number"] == 1)
+    assert "Emotions" in lesson1["title"]
+    import json as _json
+    words = [w["word"] for s in _json.loads(lesson1["lesson_data"])["sections"] for w in s.get("words", [])]
+    assert len(words) == 15
+    assert "happy" in words and "nervous" in words
+
+
+def test_unified_curriculum_lesson_2_builds_on_lesson_1(client):
+    r = client.get("/api/curriculum/by-level/foundational")
+    data = r.json()
+    lesson2 = next(l for l in data["lessons"] if l["lesson_number"] == 2)
+    assert "Am" in lesson2["title"] or "Is" in lesson2["title"]
+
+
 # ── Pairing validation ───────────────────────────────────────────────────────
 
 def test_pairing_rejects_student_as_tutor(client, admin_token, student1_id, student2_id):
@@ -99,9 +136,12 @@ class TestFullWorkflow:
         assert r.status_code == 201
 
         # Curriculum must be immediately visible to the tutor — no manual assignment step.
+        # Every student is enrolled in the single unified "foundational" course
+        # regardless of the english_level label set above (level no longer
+        # selects between separate curricula).
         prog = client.get(f"/api/tutor/students/{student1_id}/progress",
                            headers=auth_headers(tutor1_token)).json()
-        assert prog["curriculum_level"] == "beginner"
+        assert prog["curriculum_level"] == "foundational"
         assert prog["total_lessons"] == 20
         assert prog["next_lesson"]["lesson_number"] == 1
 
@@ -239,7 +279,9 @@ def test_next_lesson_calculation_is_deterministic(client, tutor1_token, student1
 def test_cannot_start_session_for_lesson_outside_students_curriculum(client, admin_token, tutor2_token, student2_id):
     client.patch(f"/api/admin/students/{student2_id}/level",
                  json={"level": "beginner"}, headers=auth_headers(admin_token))
-    # Grab an advanced-level lesson id via the public endpoint.
+    # Every student is enrolled in the single unified "foundational" curriculum
+    # regardless of english_level, so a lesson from any other (retired) curriculum
+    # — like the old "advanced" track — must still be rejected as out of scope.
     adv = client.get("/api/curriculum/by-level/advanced").json()
     advanced_lesson_id = adv["lessons"][0]["id"]
 
@@ -307,15 +349,20 @@ def test_unpaired_tutor_loses_session_control(client, admin_token, tutor2_token,
 # ── Tutor-only content protection (defense in depth) ─────────────────────────
 
 def test_public_curriculum_endpoint_strips_tutor_content(client):
-    r = client.get("/api/curriculum/by-level/beginner")
-    assert r.status_code == 200
-    data = r.json()
     import json as _json
-    for lesson in data["lessons"]:
-        if not lesson.get("lesson_data"):
-            continue
-        leaks = _find_tutor_only_leaks(_json.loads(lesson["lesson_data"]))
-        assert leaks == [], f"lesson {lesson['id']} leaks tutor-only fields publicly: {leaks}"
+    # "foundational" is the live unified course every student actually takes;
+    # "beginner" is a retired-but-still-queryable historical track. Both must
+    # be protected identically since the stripping logic is level-agnostic.
+    for level in ("foundational", "beginner"):
+        r = client.get(f"/api/curriculum/by-level/{level}")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["lessons"]) == 20
+        for lesson in data["lessons"]:
+            if not lesson.get("lesson_data"):
+                continue
+            leaks = _find_tutor_only_leaks(_json.loads(lesson["lesson_data"]))
+            assert leaks == [], f"{level} lesson {lesson['id']} leaks tutor-only fields publicly: {leaks}"
 
 
 def test_invalid_level_in_url_rejected(client):

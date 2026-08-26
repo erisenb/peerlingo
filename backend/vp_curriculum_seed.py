@@ -3465,6 +3465,315 @@ TUTOR NOTE: This final session should feel like a culmination. You have spent si
             },
         ]
     },
+    {
+        'level': 'foundational',
+        'title': 'Foundational English',
+        'description': 'One unified, sequential English course that builds the foundations of English from the ground up — vocabulary, sentence construction, grammar, pronunciation, reading, and conversation — with every lesson reusing and extending what came before. Every student follows this same course, regardless of starting level; the tutor adapts pacing and difficulty using the struggling/early-finisher guidance built into each lesson.',
+        'lessons': [
+            {
+                'number': 1,
+                'title': 'Emotions & Feelings — I Am / I Feel',
+                'outline': 'Students learn 15 core emotion words (happy, sad, angry, excited, scared, nervous, tired, bored, surprised, confused, worried, calm, proud, lonely, embarrassed) and the patterns "I am ___" and "I feel ___" to describe how they feel, practiced through real situations rather than memorization alone.',
+                'vocabulary': [
+                    {'word': 'happy', 'definition': 'Feeling good or pleased.'},
+                    {'word': 'sad', 'definition': 'Feeling unhappy, often because something bad happened.'},
+                    {'word': 'angry', 'definition': 'Feeling strong displeasure; mad.'},
+                    {'word': 'excited', 'definition': 'Feeling very happy and full of energy about something.'},
+                    {'word': 'scared', 'definition': 'Feeling afraid.'},
+                    {'word': 'nervous', 'definition': 'Feeling worried or anxious about something that is about to happen.'},
+                    {'word': 'tired', 'definition': 'Needing rest or sleep.'},
+                    {'word': 'bored', 'definition': 'Feeling uninterested because there is nothing to do.'},
+                    {'word': 'surprised', 'definition': 'Feeling shocked or amazed by something unexpected.'},
+                    {'word': 'confused', 'definition': 'Not understanding something clearly.'},
+                    {'word': 'worried', 'definition': 'Feeling anxious about a problem or something that might happen.'},
+                    {'word': 'calm', 'definition': 'Feeling relaxed and peaceful, not stressed.'},
+                    {'word': 'proud', 'definition': 'Feeling pleased about something you or someone else achieved.'},
+                    {'word': 'lonely', 'definition': 'Feeling sad because you are alone.'},
+                    {'word': 'embarrassed', 'definition': 'Feeling shy or awkward, often after a mistake.'},
+                ],
+                'expressions': [
+                    {'expression': 'I am happy.', 'meaning': 'The basic pattern for describing your state with an emotion adjective.'},
+                    {'expression': 'I feel nervous.', 'meaning': 'An alternative, equally common pattern: I feel + emotion.'},
+                    {'expression': 'How do you feel?', 'meaning': 'The core question this lesson teaches students to answer.'},
+                ],
+            },
+            {
+                'number': 2,
+                'title': 'Am / Is / Are — Talking About Everyone\'s Feelings',
+                'outline': 'Building directly on Lesson 1\'s emotion words, students learn to conjugate the verb "to be" (am/is/are) across all subject pronouns — I, you, he, she, we, they — so they can describe not just their own feelings but everyone else\'s too.',
+                'vocabulary': [
+                    {'word': 'am', 'definition': 'The form of "to be" used with I.'},
+                    {'word': 'is', 'definition': 'The form of "to be" used with he, she, and it.'},
+                    {'word': 'are', 'definition': 'The form of "to be" used with you, we, and they.'},
+                ],
+                'expressions': [
+                    {'expression': 'He is happy.', 'meaning': 'Third-person singular uses "is".'},
+                    {'expression': 'They are excited.', 'meaning': 'Plural subjects use "are".'},
+                ],
+            },
+            {
+                'number': 3,
+                'title': 'Adjectives, Verbs & Building Sentences',
+                'outline': 'Students learn the functional difference between adjectives (describing words used with am/is/are) and verbs (action words), through 8 common adjectives and 9 common verbs, and practice building simple, correct sentences with each.',
+                'vocabulary': [
+                    {'word': 'good', 'definition': 'Adjective: of high quality or pleasing.'},
+                    {'word': 'bad', 'definition': 'Adjective: of low quality or unpleasant.'},
+                    {'word': 'big', 'definition': 'Adjective: large in size.'},
+                    {'word': 'small', 'definition': 'Adjective: little in size.'},
+                    {'word': 'fast', 'definition': 'Adjective: moving quickly.'},
+                    {'word': 'slow', 'definition': 'Adjective: moving without speed.'},
+                    {'word': 'easy', 'definition': 'Adjective: not difficult.'},
+                    {'word': 'difficult', 'definition': 'Adjective: hard to do.'},
+                    {'word': 'like', 'definition': 'Verb: to enjoy or feel positive about something.'},
+                    {'word': 'want', 'definition': 'Verb: to desire something.'},
+                    {'word': 'need', 'definition': 'Verb: to require something.'},
+                    {'word': 'have', 'definition': 'Verb: to possess or own something.'},
+                    {'word': 'play', 'definition': 'Verb: to do an activity for fun or sport.'},
+                    {'word': 'eat', 'definition': 'Verb: to consume food.'},
+                    {'word': 'go', 'definition': 'Verb: to move to a place.'},
+                    {'word': 'see', 'definition': 'Verb: to look at or notice something.'},
+                    {'word': 'study', 'definition': 'Verb: to learn about something.'},
+                ],
+                'expressions': [
+                    {'expression': 'The book is good.', 'meaning': 'Adjective pattern: Subject + is/am/are + adjective.'},
+                    {'expression': 'I like pizza.', 'meaning': 'Verb pattern: Subject + verb + object.'},
+                ],
+            },
+            {
+                'number': 4,
+                'title': 'English Sound & Spelling Patterns',
+                'outline': 'A focused pronunciation and phonics lesson covering the English sound/spelling patterns students need most: th, sh, ch, ou, oo, ee, ea, gh, and silent e, practiced through real, familiar words.',
+                'vocabulary': [
+                    {'word': 'th', 'definition': 'A consonant digraph, as in "think" and "this".'},
+                    {'word': 'sh', 'definition': 'A consonant digraph, as in "she" and "wish".'},
+                    {'word': 'ch', 'definition': 'A consonant digraph, as in "chair" and "teach".'},
+                    {'word': 'silent e', 'definition': 'A final "e" that is not pronounced but changes the vowel sound before it, as in "like" and "nice".'},
+                ],
+                'expressions': [
+                    {'expression': 'She thinks this is easy.', 'meaning': 'A practice sentence combining th and sh sounds with vocabulary from earlier lessons.'},
+                ],
+            },
+            {
+                'number': 5,
+                'title': 'Subject Pronouns & Possessives',
+                'outline': 'Review of subject pronouns (I, you, he, she, we, they) paired with new possessive adjectives (my, your, his, her, our, their), practiced with everyday objects.',
+                'vocabulary': [
+                    {'word': 'my', 'definition': 'Possessive adjective for I.'},
+                    {'word': 'your', 'definition': 'Possessive adjective for you.'},
+                    {'word': 'his', 'definition': 'Possessive adjective for he.'},
+                    {'word': 'her', 'definition': 'Possessive adjective for she.'},
+                    {'word': 'our', 'definition': 'Possessive adjective for we.'},
+                    {'word': 'their', 'definition': 'Possessive adjective for they.'},
+                    {'word': 'book', 'definition': 'A set of printed pages, bound together, for reading.'},
+                    {'word': 'phone', 'definition': 'A device used to call or text people.'},
+                ],
+                'expressions': [
+                    {'expression': 'This is my phone.', 'meaning': 'Possessive adjective + noun to show ownership.'},
+                ],
+            },
+            {
+                'number': 6,
+                'title': 'Family & People — This Is / These Are',
+                'outline': 'New family vocabulary combined with "this is / these are" to introduce people, reusing possessives from Lesson 5 and emotion words from Lesson 1.',
+                'vocabulary': [
+                    {'word': 'mother', 'definition': 'A female parent.'},
+                    {'word': 'father', 'definition': 'A male parent.'},
+                    {'word': 'sister', 'definition': 'A female sibling.'},
+                    {'word': 'brother', 'definition': 'A male sibling.'},
+                    {'word': 'friend', 'definition': 'A person you know well and like.'},
+                    {'word': 'family', 'definition': 'A group of related people, such as parents and children.'},
+                ],
+                'expressions': [
+                    {'expression': 'This is my sister.', 'meaning': 'Introducing one person using "this is" + possessive + noun.'},
+                    {'expression': 'These are my parents.', 'meaning': 'Introducing more than one person using "these are".'},
+                ],
+            },
+            {
+                'number': 7,
+                'title': 'Everyday Verbs & Simple Present (I / You)',
+                'outline': 'Students practice the simple present tense with I and you using the verb list from Lesson 3, talking about daily habits and preferences.',
+                'vocabulary': [
+                    {'word': 'drink', 'definition': 'Verb: to consume liquid.'},
+                    {'word': 'watch', 'definition': 'Verb: to look at something for a period of time, like TV.'},
+                    {'word': 'read', 'definition': 'Verb: to look at and understand written words.'},
+                    {'word': 'work', 'definition': 'Verb: to do a job or task.'},
+                ],
+                'expressions': [
+                    {'expression': 'I study every day.', 'meaning': 'Simple present used for habits and routines.'},
+                ],
+            },
+            {
+                'number': 8,
+                'title': 'Simple Present — He / She / It',
+                'outline': 'Students learn the third-person -s ending in the simple present tense, including the spelling changes for verbs like have→has, go→goes, and study→studies.',
+                'vocabulary': [
+                    {'word': 'likes', 'definition': 'Third-person singular form of "like".'},
+                    {'word': 'has', 'definition': 'Third-person singular form of "have".'},
+                    {'word': 'goes', 'definition': 'Third-person singular form of "go".'},
+                    {'word': 'studies', 'definition': 'Third-person singular form of "study".'},
+                ],
+                'expressions': [
+                    {'expression': 'She studies English.', 'meaning': 'Third-person singular present tense with a spelling change (y → ies).'},
+                ],
+            },
+            {
+                'number': 9,
+                'title': 'Negatives — Don\'t / Doesn\'t',
+                'outline': 'Students learn to make simple present sentences negative using don\'t and doesn\'t, reusing the verbs from Lessons 7-8.',
+                'vocabulary': [
+                    {'word': "don't", 'definition': 'Contraction of "do not", used with I/you/we/they.'},
+                    {'word': "doesn't", 'definition': 'Contraction of "does not", used with he/she/it.'},
+                ],
+                'expressions': [
+                    {'expression': "She doesn't like coffee.", 'meaning': 'Negative simple present with third person: doesn\'t + base verb (no -s).'},
+                ],
+            },
+            {
+                'number': 10,
+                'title': 'Yes/No Questions — Do / Does',
+                'outline': 'Students learn to form yes/no questions in the simple present with do/does and answer with short answers, reusing verbs and negatives from previous lessons.',
+                'vocabulary': [
+                    {'word': 'do you...?', 'definition': 'Question form used with I/you/we/they.'},
+                    {'word': 'does she...?', 'definition': 'Question form used with he/she/it.'},
+                ],
+                'expressions': [
+                    {'expression': 'Yes, I do. / No, I don\'t.', 'meaning': 'Standard short answers to do/does questions.'},
+                ],
+            },
+            {
+                'number': 11,
+                'title': 'Question Words — What, Where, When, Who, Why, How',
+                'outline': 'Students learn the six core question words and practice forming information questions, building directly on the do/does question pattern from Lesson 10.',
+                'vocabulary': [
+                    {'word': 'what', 'definition': 'Question word asking about a thing.'},
+                    {'word': 'where', 'definition': 'Question word asking about a place.'},
+                    {'word': 'when', 'definition': 'Question word asking about time.'},
+                    {'word': 'who', 'definition': 'Question word asking about a person.'},
+                    {'word': 'why', 'definition': 'Question word asking about a reason.'},
+                    {'word': 'how', 'definition': 'Question word asking about manner or method.'},
+                ],
+                'expressions': [
+                    {'expression': 'Where do you live?', 'meaning': 'Question word + do/does question structure.'},
+                ],
+            },
+            {
+                'number': 12,
+                'title': 'Prepositions of Place',
+                'outline': 'Students learn common prepositions of place and use them to describe where people and things are, reusing family and object vocabulary from earlier lessons.',
+                'vocabulary': [
+                    {'word': 'in', 'definition': 'Preposition: inside something.'},
+                    {'word': 'on', 'definition': 'Preposition: on top of a surface.'},
+                    {'word': 'at', 'definition': 'Preposition: at a specific point or place.'},
+                    {'word': 'under', 'definition': 'Preposition: below something.'},
+                    {'word': 'next to', 'definition': 'Preposition: beside something.'},
+                    {'word': 'between', 'definition': 'Preposition: in the middle of two things.'},
+                ],
+                'expressions': [
+                    {'expression': 'My phone is on the table.', 'meaning': 'Subject + is + preposition + location.'},
+                ],
+            },
+            {
+                'number': 13,
+                'title': 'Present Continuous — I Am ___ing',
+                'outline': 'Students learn the present continuous tense (am/is/are + verb-ing) to describe actions happening right now, reusing verbs from Lesson 7 and noting spelling rules from Lesson 4.',
+                'vocabulary': [
+                    {'word': 'studying', 'definition': 'The -ing form of "study", used in the present continuous.'},
+                    {'word': 'eating', 'definition': 'The -ing form of "eat".'},
+                    {'word': 'playing', 'definition': 'The -ing form of "play".'},
+                    {'word': 'having', 'definition': 'The -ing form of "have" (drops the silent e).'},
+                ],
+                'expressions': [
+                    {'expression': 'She is studying right now.', 'meaning': 'Present continuous: is/am/are + verb-ing, for actions happening now.'},
+                ],
+            },
+            {
+                'number': 14,
+                'title': 'Comparing Things — Bigger, Better, More',
+                'outline': 'Students learn to compare people and things using comparative adjectives, reusing the adjective list from Lesson 3 (bigger, smaller, faster, slower, easier, more difficult, better, worse).',
+                'vocabulary': [
+                    {'word': 'bigger', 'definition': 'Comparative form of "big".'},
+                    {'word': 'smaller', 'definition': 'Comparative form of "small".'},
+                    {'word': 'better', 'definition': 'Comparative form of "good".'},
+                    {'word': 'worse', 'definition': 'Comparative form of "bad".'},
+                    {'word': 'more difficult', 'definition': 'Comparative form of "difficult" (long adjectives use "more").'},
+                ],
+                'expressions': [
+                    {'expression': 'This book is more difficult than that one.', 'meaning': 'Comparative pattern for longer adjectives: more + adjective + than.'},
+                ],
+            },
+            {
+                'number': 15,
+                'title': 'Past Tense — Regular Verbs',
+                'outline': 'Students learn to form the simple past tense with regular -ed verbs, reusing the verb list from Lesson 3 and revisiting spelling rules from Lesson 4.',
+                'vocabulary': [
+                    {'word': 'played', 'definition': 'Past tense of "play".'},
+                    {'word': 'studied', 'definition': 'Past tense of "study" (y changes to ied).'},
+                    {'word': 'liked', 'definition': 'Past tense of "like".'},
+                    {'word': 'watched', 'definition': 'Past tense of "watch".'},
+                ],
+                'expressions': [
+                    {'expression': 'I studied yesterday.', 'meaning': 'Regular past tense: verb + -ed, often paired with a past time word.'},
+                ],
+            },
+            {
+                'number': 16,
+                'title': 'Past Tense — Common Irregular Verbs',
+                'outline': 'Students learn the past tense forms of the most common irregular verbs (go→went, have→had, see→saw, eat→ate, get→got, do→did), which do not follow the -ed pattern from Lesson 15.',
+                'vocabulary': [
+                    {'word': 'went', 'definition': 'Past tense of "go".'},
+                    {'word': 'had', 'definition': 'Past tense of "have".'},
+                    {'word': 'saw', 'definition': 'Past tense of "see".'},
+                    {'word': 'ate', 'definition': 'Past tense of "eat".'},
+                    {'word': 'got', 'definition': 'Past tense of "get".'},
+                    {'word': 'did', 'definition': 'Past tense of "do".'},
+                ],
+                'expressions': [
+                    {'expression': 'She got a good grade.', 'meaning': 'Irregular past tense in a real, natural sentence, reusing "good" from Lesson 3.'},
+                ],
+            },
+            {
+                'number': 17,
+                'title': 'Future — Going To / Will',
+                'outline': 'Students learn two ways to talk about the future — "going to" for plans and "will" for quick decisions or predictions — reusing emotion words from Lesson 1.',
+                'vocabulary': [
+                    {'word': 'going to', 'definition': 'Future form used for plans and intentions.'},
+                    {'word': 'will', 'definition': 'Future form used for predictions and quick decisions.'},
+                    {'word': 'tomorrow', 'definition': 'The day after today.'},
+                ],
+                'expressions': [
+                    {'expression': 'She is going to be happy.', 'meaning': 'Future "going to" with an emotion adjective from Lesson 1.'},
+                ],
+            },
+            {
+                'number': 18,
+                'title': 'Connecting Ideas — And, But, Because, So',
+                'outline': 'Students learn to combine simple sentences into longer, more natural ones using and, but, because, and so, pulling together vocabulary and tenses from the whole course.',
+                'vocabulary': [
+                    {'word': 'and', 'definition': 'Conjunction: adds one idea to another.'},
+                    {'word': 'but', 'definition': 'Conjunction: shows contrast between two ideas.'},
+                    {'word': 'because', 'definition': 'Conjunction: gives a reason.'},
+                    {'word': 'so', 'definition': 'Conjunction: shows a result.'},
+                ],
+                'expressions': [
+                    {'expression': 'She is happy because she got a good grade.', 'meaning': 'Combining an emotion, a reason (because), and irregular past tense in one natural sentence.'},
+                ],
+            },
+            {
+                'number': 19,
+                'title': 'Reading Comprehension — Putting It All Together',
+                'outline': 'Students read a short passage built entirely from course vocabulary and grammar, then answer comprehension questions, consolidating everything learned so far.',
+                'vocabulary': [],
+                'expressions': [],
+            },
+            {
+                'number': 20,
+                'title': 'Final Conversation — Everything You\'ve Learned',
+                'outline': 'A capstone conversation lesson where students use pronouns, tenses, emotions, questions, and comparisons together in free conversation, with a full course review.',
+                'vocabulary': [],
+                'expressions': [],
+            },
+        ]
+    },
 ]
 
 

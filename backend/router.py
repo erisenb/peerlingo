@@ -60,6 +60,7 @@ with database.engine.connect() as _c:
         ('apple_id', 'VARCHAR'),
         ('weekly_hours', 'VARCHAR'),
         ('max_students', 'VARCHAR'),
+        ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
     ]:
         try:
             _c.execute(text(f"ALTER TABLE vp_users ADD COLUMN {_col} {_coltype}"))
@@ -498,6 +499,7 @@ class UserOut(BaseModel):
     tutor_consent_accepted_at: Optional[str] = None
     weekly_hours: Optional[str] = None
     max_students: Optional[str] = None
+    must_change_password: bool = False
 
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
@@ -515,6 +517,12 @@ class ProfileUpdate(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+class ForceChangePasswordRequest(BaseModel):
+    new_password: str
+
+class TempPasswordOut(BaseModel):
+    temp_password: str
 
 class SurveyRequest(BaseModel):
     full_name: Optional[str] = None
@@ -570,7 +578,8 @@ def _user_out(user: models.User) -> UserOut:
                    tutor_consent_version=user.tutor_consent_version,
                    tutor_consent_accepted_at=user.tutor_consent_accepted_at.isoformat() if user.tutor_consent_accepted_at else None,
                    weekly_hours=user.weekly_hours,
-                   max_students=user.max_students)
+                   max_students=user.max_students,
+                   must_change_password=bool(user.must_change_password))
 
 class LessonBody(BaseModel):
     title: str
@@ -1312,6 +1321,18 @@ def change_password(body: ChangePasswordRequest, current_user: models.User = Dep
     db.commit()
     return {"ok": True}
 
+@router.post("/api/auth/force-change-password", response_model=UserOut)
+def force_change_password(body: ForceChangePasswordRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.must_change_password:
+        raise HTTPException(status_code=400, detail="Password change not required")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    current_user.hashed_password = hash_password(body.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    db.refresh(current_user)
+    return _user_out(current_user)
+
 @router.put("/api/profile/survey", response_model=UserOut)
 def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     _require_student(current_user)
@@ -1341,22 +1362,8 @@ def submit_survey(body: SurveyRequest, current_user: models.User = Depends(get_c
     db.commit()
     db.refresh(current_user)
 
-    # Auto-assign curriculum based on english_level (idempotent)
-    if current_user.english_level:
-        already_enrolled = db.query(models.VPStudentProgress).filter(
-            models.VPStudentProgress.student_id == current_user.id
-        ).first()
-        if not already_enrolled:
-            curriculum = db.query(models.VPCurriculum).filter(
-                models.VPCurriculum.level == current_user.english_level
-            ).first()
-            if curriculum:
-                db.add(models.VPStudentProgress(
-                    student_id=current_user.id,
-                    curriculum_id=curriculum.id,
-                    current_lesson_number=1,
-                ))
-                db.commit()
+    # Enroll in the single unified curriculum (idempotent — every student follows it).
+    _ensure_student_enrolled(current_user, db)
 
     # Send welcome message from first admin on first survey completion
     admin = db.query(models.User).filter(models.User.role == models.UserRole.admin).first()
@@ -1419,9 +1426,11 @@ def accept_tutor_consent(body: TutorConsentRequest, current_user: models.User = 
 
 @router.get("/api/curriculum/by-level/{level}")
 def get_curriculum_by_level(level: str, db: Session = Depends(get_db)):
-    """Public — no auth required. Returns full curriculum + lessons + homework for a level."""
-    if level not in ('beginner', 'intermediate', 'advanced'):
-        raise HTTPException(status_code=400, detail="level must be beginner, intermediate, or advanced")
+    """Public — no auth required. Returns full curriculum + lessons + homework for a level.
+    'foundational' is the single unified course every student is enrolled in today;
+    the old per-level tracks are kept queryable here only for historical browsing."""
+    if level not in ('foundational', 'beginner', 'intermediate', 'advanced'):
+        raise HTTPException(status_code=400, detail="level must be foundational, beginner, intermediate, or advanced")
     curriculum = db.query(models.VPCurriculum).filter(models.VPCurriculum.level == level).first()
     if not curriculum:
         return {"enrolled": False, "lessons": []}
@@ -1630,6 +1639,38 @@ def get_my_tutor(current_user: models.User = Depends(get_current_user), db: Sess
     if not tutor:
         raise HTTPException(status_code=404, detail="Tutor not found")
     return _user_out(tutor)
+
+def _generate_temp_password() -> str:
+    import secrets
+    # Unambiguous charset (no 0/O, 1/l/I) so it's easy to read aloud/hand-write.
+    alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
+    return "".join(secrets.choice(alphabet) for _ in range(10))
+
+@router.post("/api/users/{student_id}/reset-password", response_model=TempPasswordOut)
+def reset_student_password(student_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Lets a paired tutor or an admin reset a student's password without email/phone.
+
+    Students who log in with a school-issued username (no real email on file) have
+    no self-service recovery path, so a trusted adult resets it on their behalf and
+    hands them the one-time password shown here.
+    """
+    if current_user.role not in (models.UserRole.tutor, models.UserRole.admin):
+        raise HTTPException(status_code=403, detail="Tutors and admins only")
+    student = db.query(models.User).filter_by(id=student_id, role=models.UserRole.student).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    if current_user.role == models.UserRole.tutor:
+        pairing = db.query(models.TutorStudentPairing).filter_by(
+            tutor_id=current_user.id, student_id=student_id
+        ).first()
+        if not pairing:
+            raise HTTPException(status_code=403, detail="Not your student")
+
+    temp_password = _generate_temp_password()
+    student.hashed_password = hash_password(temp_password)
+    student.must_change_password = True
+    db.commit()
+    return TempPasswordOut(temp_password=temp_password)
 
 
 @router.get("/api/users/site-admin", response_model=UserOut)
@@ -2158,13 +2199,26 @@ def delete_meeting(meeting_id: int, current_user: models.User = Depends(get_curr
 
 # ── Curriculum enrollment helper ───────────────────────────────────────────────
 
-def _ensure_student_enrolled(student: models.User, db: Session) -> None:
-    """Enroll student in the curriculum matching their english_level if not already enrolled."""
-    if not student.english_level:
-        return
-    curriculum = db.query(models.VPCurriculum).filter(
-        models.VPCurriculum.level == student.english_level.lower()
+# Every student now follows the same single foundational course — the three
+# old per-level curricula (beginner/intermediate/advanced) are retired from
+# the enrollment path but left in the database untouched, so any student
+# already partway through one keeps that history intact.
+UNIFIED_CURRICULUM_LEVEL = "foundational"
+
+
+def _unified_curriculum(db: Session):
+    return db.query(models.VPCurriculum).filter(
+        models.VPCurriculum.level == UNIFIED_CURRICULUM_LEVEL
     ).first()
+
+
+def _ensure_student_enrolled(student: models.User, db: Session) -> None:
+    """Enroll the student in the single unified curriculum, if not already enrolled.
+
+    No longer depends on english_level — the course is the same for everyone,
+    regardless of starting proficiency. Tutors adapt pacing per-student using
+    each lesson's if_struggling / if_finishes_early guidance instead."""
+    curriculum = _unified_curriculum(db)
     if not curriculum:
         return
     existing = db.query(models.VPStudentProgress).filter_by(
@@ -2180,22 +2234,20 @@ def _ensure_student_enrolled(student: models.User, db: Session) -> None:
 
 
 def _get_active_progress(student: models.User, db: Session):
-    """Return the student's progress row for their CURRENT level's curriculum.
+    """Return the student's progress row for the single unified curriculum.
 
-    A student may have older progress rows from a previous level (kept as
-    history, never deleted) — always resolve to the row matching their
-    present english_level so a level change doesn't surface stale progress.
+    Falls back to the most recent progress row of any kind so a student who
+    was enrolled under the old per-level system (before the unified course
+    existed) still sees something rather than a 404, while new enrollment
+    always targets the unified curriculum going forward.
     """
-    if student.english_level:
-        curriculum = db.query(models.VPCurriculum).filter(
-            models.VPCurriculum.level == student.english_level.lower()
+    curriculum = _unified_curriculum(db)
+    if curriculum:
+        match = db.query(models.VPStudentProgress).filter_by(
+            student_id=student.id, curriculum_id=curriculum.id
         ).first()
-        if curriculum:
-            match = db.query(models.VPStudentProgress).filter_by(
-                student_id=student.id, curriculum_id=curriculum.id
-            ).first()
-            if match:
-                return match
+        if match:
+            return match
     return db.query(models.VPStudentProgress).filter_by(
         student_id=student.id
     ).order_by(models.VPStudentProgress.started_at.desc()).first()

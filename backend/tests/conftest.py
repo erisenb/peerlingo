@@ -61,6 +61,11 @@ def tutor2_token(accounts):
 
 
 @pytest.fixture(scope="session")
+def tutor3_token(accounts):
+    return accounts["demo-tutor3@peerlingo.test"]["token"]
+
+
+@pytest.fixture(scope="session")
 def student1_id(accounts):
     return accounts["demo-student1@peerlingo.test"]["user"]["id"]
 
@@ -68,6 +73,11 @@ def student1_id(accounts):
 @pytest.fixture(scope="session")
 def student2_id(accounts):
     return accounts["demo-student2@peerlingo.test"]["user"]["id"]
+
+
+@pytest.fixture(scope="session")
+def student3_id(accounts):
+    return accounts["demo-student3@peerlingo.test"]["user"]["id"]
 
 
 @pytest.fixture(scope="session")

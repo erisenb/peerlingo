@@ -165,10 +165,14 @@ class TestFullWorkflow:
         TestFullWorkflow._session_id = session["id"]
 
     def test_05_tutor_view_has_full_content(self, client, tutor1_token):
+        # Lesson 1's first section is now the vocabulary teaching section (no
+        # more warm-up small talk before it — the lesson begins directly with
+        # the 15 emotion words), so it carries tutor_steps + words rather than
+        # a discussion section's tutor_steps + prompts.
         r = client.get(f"/api/sessions/{TestFullWorkflow._session_id}", headers=auth_headers(tutor1_token))
         section0 = r.json()["lesson"]["data"]["sections"][0]
         assert "tutor_steps" in section0
-        assert "prompts" in section0
+        assert "words" in section0
 
     def test_06_student_view_is_stripped(self, client, student1_token):
         r = client.get("/api/sessions/mine", headers=auth_headers(student1_token))

@@ -3473,7 +3473,7 @@ TUTOR NOTE: This final session should feel like a culmination. You have spent si
             {
                 'number': 1,
                 'title': 'Emotions & Feelings — I Am / I Feel',
-                'outline': 'Students learn 15 core emotion words (happy, sad, angry, excited, scared, nervous, tired, bored, surprised, confused, worried, calm, proud, lonely, embarrassed) and the patterns "I am ___" and "I feel ___" to describe how they feel, practiced through real situations rather than memorization alone.',
+                'outline': 'Students learn 15 core emotion words (happy, sad, angry, excited, scared, nervous, tired, bored, surprised, confused, worried, calm, proud, lonely, embarrassed) with their Spanish meanings, the patterns "I am ___" and "I feel ___" to describe how they feel, and a first, simple introduction to the letter combinations gh, ph, th, and ch. Homework: memorize all 15 words — the student is tested on them at the start of Lesson 2.',
                 'vocabulary': [
                     {'word': 'happy', 'definition': 'Feeling good or pleased.'},
                     {'word': 'sad', 'definition': 'Feeling unhappy, often because something bad happened.'},
@@ -3500,15 +3500,18 @@ TUTOR NOTE: This final session should feel like a culmination. You have spent si
             {
                 'number': 2,
                 'title': 'Am / Is / Are — Talking About Everyone\'s Feelings',
-                'outline': 'Building directly on Lesson 1\'s emotion words, students learn to conjugate the verb "to be" (am/is/are) across all subject pronouns — I, you, he, she, we, they — so they can describe not just their own feelings but everyone else\'s too.',
+                'outline': 'The lesson opens by testing the student on all 15 emotion words from Lesson 1. Building on those words, students learn to conjugate the verb "to be" (am/is/are) across all subject pronouns, the third-person -s form of simple action verbs (play/plays), and a first look at was/were and present continuous (-ing). Homework: the official Cambridge English Pre A1 Starters Reading & Writing sample paper, Volume 1 (Listening not required).',
                 'vocabulary': [
                     {'word': 'am', 'definition': 'The form of "to be" used with I.'},
                     {'word': 'is', 'definition': 'The form of "to be" used with he, she, and it.'},
                     {'word': 'are', 'definition': 'The form of "to be" used with you, we, and they.'},
+                    {'word': 'was', 'definition': 'The past form of "to be" used with I, he, she, and it.'},
+                    {'word': 'were', 'definition': 'The past form of "to be" used with you, we, and they.'},
                 ],
                 'expressions': [
                     {'expression': 'He is happy.', 'meaning': 'Third-person singular uses "is".'},
                     {'expression': 'They are excited.', 'meaning': 'Plural subjects use "are".'},
+                    {'expression': 'She plays. / She was tired.', 'meaning': 'He/she action verbs add -s; he/she past "to be" is "was".'},
                 ],
             },
             {

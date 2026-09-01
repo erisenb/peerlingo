@@ -609,6 +609,11 @@ function UsersTab({ token }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [resetting, setResetting] = useState(null)
+  const [tempPassword, setTempPassword] = useState(null)
+  const [profileStudent, setProfileStudent] = useState(null)
+  const [profileAssessment, setProfileAssessment] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -616,6 +621,34 @@ function UsersTab({ token }) {
       fetch(`${API_BASE}/api/users/students`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([t, s]) => { setTutors(t); setStudents(s) }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!profileStudent) { setProfileAssessment(null); return }
+    setProfileLoading(true)
+    fetch(`${API_BASE}/api/assessment/student/${profileStudent.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(setProfileAssessment)
+      .finally(() => setProfileLoading(false))
+  }, [profileStudent])
+
+  async function resetPassword(u) {
+    if (resetting) return
+    if (!window.confirm(`Reset ${u.full_name}'s password? Their current password will stop working immediately.`)) return
+    setResetting(u.id)
+    try {
+      const res = await fetch(`${API_BASE}/api/users/${u.id}/reset-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Could not reset password')
+      const data = await res.json()
+      setTempPassword({ id: u.id, name: u.full_name, value: data.temp_password })
+    } catch (e) {
+      alert('Could not reset password. Please try again.')
+    } finally {
+      setResetting(null)
+    }
+  }
 
   async function deleteUser(id) {
     await fetch(`${API_BASE}/api/admin/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
@@ -633,7 +666,10 @@ function UsersTab({ token }) {
   function UserCard({ user: u, roleColor, roleBg, isStudent }) {
     return (
       <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '2px solid #e5e7eb', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div
+          onClick={isStudent ? () => setProfileStudent(u) : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: isStudent ? 'pointer' : 'default' }}
+        >
           <div style={{ width: 44, height: 44, borderRadius: '50%', background: roleBg, border: `2px solid ${roleColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: roleColor, flexShrink: 0 }}>
             {u.full_name?.[0]?.toUpperCase()}
           </div>
@@ -647,6 +683,11 @@ function UsersTab({ token }) {
         <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
           {isStudent && (
             <LevelSelect student={u} token={token} onChanged={handleLevelChanged} />
+          )}
+          {isStudent && (
+            <button onClick={() => resetPassword(u)} disabled={resetting === u.id} style={smallBtn('#374151')}>
+              🔑 {resetting === u.id ? '…' : 'Reset Password'}
+            </button>
           )}
           {confirmDelete === u.id
             ? <>
@@ -683,6 +724,22 @@ function UsersTab({ token }) {
       {students.length > 0 && (
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 800, color: '#d97706', marginBottom: 12 }}>⭐ Students</h3>
+          {tempPassword && (
+            <div style={{ background: '#fef3c7', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '14px 18px', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e', marginBottom: 6 }}>
+                New temporary password for {tempPassword.name} — give it to them now, it won't be shown again:
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <code style={{ fontSize: 18, fontWeight: 800, letterSpacing: 1, color: '#1e293b', background: '#fff', padding: '6px 12px', borderRadius: 8, border: '1px solid #f59e0b' }}>
+                  {tempPassword.value}
+                </code>
+                <button onClick={() => setTempPassword(null)} style={{ background: 'none', border: 'none', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Dismiss</button>
+              </div>
+              <div style={{ fontSize: 11, color: '#92400e', marginTop: 8 }}>
+                They'll be asked to set their own password the next time they log in.
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {students.map(u => <UserCard key={u.id} user={u} roleColor="#d97706" roleBg="#fef3c7" isStudent={true} />)}
           </div>
@@ -693,6 +750,64 @@ function UsersTab({ token }) {
         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 16, border: '2px dashed #ddd6fe' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
           <p style={{ color: '#6b7280', fontSize: 14 }}>No users yet. Accounts appear here once people register.</p>
+        </div>
+      )}
+
+      {profileStudent && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setProfileStudent(null)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fef3c7', border: '2px solid #d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#d97706', flexShrink: 0 }}>
+                {profileStudent.full_name?.[0]?.toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#1e293b' }}>{profileStudent.full_name}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  {[profileStudent.email, profileStudent.grade && `Grade ${profileStudent.grade}`, profileStudent.school].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+              <button onClick={() => setProfileStudent(null)} style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {profileStudent.goals ? (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                  🎯 Goals &amp; Motivation
+                </div>
+                <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.75, margin: 0 }}>{profileStudent.goals}</p>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '18px 14px', background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #e2e8f0', marginBottom: 14 }}>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>No goals recorded from the survey yet.</p>
+              </div>
+            )}
+
+            {profileStudent.bio && (
+              <div style={{ background: LIGHT_PURPLE, borderRadius: 12, padding: '14px 18px', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: PURPLE, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>About</div>
+                <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, margin: 0 }}>{profileStudent.bio}</p>
+              </div>
+            )}
+
+            {profileLoading ? (
+              <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 16 }}>Loading English writing sample…</p>
+            ) : profileAssessment?.answers?.speaking_text ? (
+              <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 12, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#0d9488', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                  ✍️ About Themselves (in English)
+                </div>
+                <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
+                  "{profileAssessment.answers.speaking_text}"
+                </p>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '18px 14px', background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #e2e8f0' }}>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>Hasn't written an English introduction in their placement assessment yet.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

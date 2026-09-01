@@ -33,12 +33,12 @@ with database.engine.connect() as _c:
         _c.execute(text("ALTER TABLE vp_users ADD COLUMN language VARCHAR DEFAULT 'en'"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_users ADD COLUMN google_id VARCHAR"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     for _col, _coltype in [
         ('country', 'VARCHAR'),
         ('city', 'VARCHAR'),
@@ -66,32 +66,32 @@ with database.engine.connect() as _c:
             _c.execute(text(f"ALTER TABLE vp_users ADD COLUMN {_col} {_coltype}"))
             _c.commit()
         except Exception:
-            pass
+            _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_curriculum_lessons ADD COLUMN outline_es TEXT"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_curriculum_lessons ADD COLUMN slides_url VARCHAR"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_curriculum_lessons ADD COLUMN lesson_data TEXT"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_meetings ADD COLUMN notes VARCHAR"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("ALTER TABLE vp_assignments ADD COLUMN vp_lesson_id INTEGER REFERENCES vp_curriculum_lessons(id)"))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     try:
         _c.execute(text("""
             CREATE TABLE IF NOT EXISTS vp_sessions (
@@ -107,7 +107,7 @@ with database.engine.connect() as _c:
         """))
         _c.commit()
     except Exception:
-        pass
+        _c.rollback()
     # Recreate vp_student_curriculum if it still uses old FK to vp_admin_lessons
     try:
         _c.execute(text("SELECT sql FROM sqlite_master WHERE name='vp_student_curriculum'"))
@@ -116,7 +116,7 @@ with database.engine.connect() as _c:
             _c.execute(text("DROP TABLE IF EXISTS vp_student_curriculum"))
             _c.commit()
     except Exception:
-        pass
+        _c.rollback()
 
 
 # ── Curriculum seed ────────────────────────────────────────────────────────────

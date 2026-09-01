@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import ChangePasswordRequired from './pages/ChangePasswordRequired'
 import DevLogin from './pages/DevLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminLogin from './pages/AdminLogin'
@@ -49,7 +50,21 @@ function RequireAuth({ role, children }) {
   const { user, loading } = useAuth()
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
   if (!user) return <Navigate to="/login" replace />
+  if (user.must_change_password) return <Navigate to="/change-password-required" replace />
   if (role && user.role !== role) return <Navigate to="/" replace />
+  return children
+}
+
+function PasswordChangeGuard({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>
+  if (!user) return <Navigate to="/login" replace />
+  if (!user.must_change_password) {
+    const dest = user.role === 'admin' ? '/dashboard/admin'
+      : user.role === 'tutor' ? (!user.survey_completed ? '/tutor-survey' : !user.tutor_consent_version ? '/tutor-consent' : '/dashboard/tutor')
+      : (!user.survey_completed ? '/survey' : needsMinorConsent(user) ? '/consent' : '/dashboard/student')
+    return <Navigate to={dest} replace />
+  }
   return children
 }
 
@@ -144,6 +159,7 @@ function AnimatedRoutes() {
           <Route path="/curriculum" element={<CurriculumPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/change-password-required" element={<PasswordChangeGuard><ChangePasswordRequired /></PasswordChangeGuard>} />
           <Route path="/survey" element={<RequireAuth role="student"><SurveyDoneGuard><StudentSurvey /></SurveyDoneGuard></RequireAuth>} />
           <Route path="/consent" element={<RequireAuth role="student"><MinorConsent /></RequireAuth>} />
           <Route path="/tutor-consent" element={<RequireAuth role="tutor"><TutorConsent /></RequireAuth>} />

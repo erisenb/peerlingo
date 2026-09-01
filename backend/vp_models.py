@@ -56,6 +56,7 @@ class User(Base):
     tutor_consent_accepted_at = Column(DateTime, nullable=True)
     weekly_hours = Column(String, nullable=True)
     max_students = Column(String, nullable=True)
+    must_change_password = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -800,6 +800,8 @@ function MyStudentsTab({ token }) {
   const [showResponses, setShowResponses] = useState(false)
   const [studentProgress, setStudentProgress] = useState(null)
   const [startingLesson, setStartingLesson] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [tempPassword, setTempPassword] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -810,6 +812,7 @@ function MyStudentsTab({ token }) {
   }, [])
 
   useEffect(() => {
+    setTempPassword(null)
     if (!selected) {
       setPlacement(null); setShowResponses(false); setStudentProgress(null)
       return
@@ -845,6 +848,25 @@ function MyStudentsTab({ token }) {
       alert('Could not start session. Please try again.')
     } finally {
       setStartingLesson(false)
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!selected || resetting) return
+    if (!window.confirm(`Reset ${selected.full_name}'s password? Their current password will stop working immediately.`)) return
+    setResetting(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/users/${selected.id}/reset-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Could not reset password')
+      const data = await res.json()
+      setTempPassword(data.temp_password)
+    } catch (e) {
+      alert('Could not reset password. Please try again.')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -925,11 +947,35 @@ function MyStudentsTab({ token }) {
 
   return (
     <div>
-      <button onClick={() => setSelected(null)} style={{
-        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-        color: BLUE, fontWeight: 700, fontSize: 14, marginBottom: 20,
-        display: 'flex', alignItems: 'center', gap: 6,
-      }}>← Back to Students</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <button onClick={() => setSelected(null)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          color: BLUE, fontWeight: 700, fontSize: 14,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>← Back to Students</button>
+        <button onClick={handleResetPassword} disabled={resetting} style={{
+          background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 8,
+          padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#374151',
+          cursor: resetting ? 'not-allowed' : 'pointer',
+        }}>🔑 {resetting ? 'Resetting…' : 'Reset Password'}</button>
+      </div>
+
+      {tempPassword && (
+        <div style={{ background: '#fef3c7', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e', marginBottom: 6 }}>
+            New temporary password for {selected.full_name} — give it to them now, it won't be shown again:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <code style={{ fontSize: 18, fontWeight: 800, letterSpacing: 1, color: '#1e293b', background: '#fff', padding: '6px 12px', borderRadius: 8, border: '1px solid #f59e0b' }}>
+              {tempPassword}
+            </code>
+            <button onClick={() => setTempPassword(null)} style={{ background: 'none', border: 'none', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Dismiss</button>
+          </div>
+          <div style={{ fontSize: 11, color: '#92400e', marginTop: 8 }}>
+            They'll be asked to set their own password the next time they log in.
+          </div>
+        </div>
+      )}
 
       {/* Profile card */}
       <div style={{

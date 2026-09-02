@@ -2236,10 +2236,12 @@ def _ensure_student_enrolled(student: models.User, db: Session) -> None:
 def _get_active_progress(student: models.User, db: Session):
     """Return the student's progress row for the single unified curriculum.
 
-    Falls back to the most recent progress row of any kind so a student who
-    was enrolled under the old per-level system (before the unified course
-    existed) still sees something rather than a 404, while new enrollment
-    always targets the unified curriculum going forward.
+    A student enrolled under the old per-level system (before the unified
+    course existed) has a progress row for one of those old curricula but
+    none yet for the unified one — enroll them now so they migrate onto the
+    current course instead of staying on stale, retired lesson content.
+    Only falls back to an old-style row if the unified curriculum itself
+    isn't seeded at all.
     """
     curriculum = _unified_curriculum(db)
     if curriculum:
@@ -2248,6 +2250,10 @@ def _get_active_progress(student: models.User, db: Session):
         ).first()
         if match:
             return match
+        _ensure_student_enrolled(student, db)
+        return db.query(models.VPStudentProgress).filter_by(
+            student_id=student.id, curriculum_id=curriculum.id
+        ).first()
     return db.query(models.VPStudentProgress).filter_by(
         student_id=student.id
     ).order_by(models.VPStudentProgress.started_at.desc()).first()

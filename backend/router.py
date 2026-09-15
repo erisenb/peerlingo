@@ -2613,8 +2613,13 @@ def get_student_progress(student_id: int,
             status = "locked"
         lessons_out.append({"id": l.id, "lesson_number": l.lesson_number, "title": l.title, "status": status})
 
-    active_session = db.query(models.VPSession).filter_by(
-        tutor_id=current_user.id, student_id=student_id, completed=False
+    active_session = db.query(models.VPSession).join(
+        models.VPCurriculumLesson, models.VPSession.lesson_id == models.VPCurriculumLesson.id
+    ).filter(
+        models.VPSession.tutor_id == current_user.id,
+        models.VPSession.student_id == student_id,
+        models.VPSession.completed == False,
+        models.VPCurriculumLesson.curriculum_id == progress.curriculum_id,
     ).order_by(models.VPSession.started_at.desc()).first()
 
     return {
@@ -2684,9 +2689,15 @@ def get_my_session(current_user: models.User = Depends(get_current_user),
                    db: Session = Depends(get_db)):
     """Student: return their active (incomplete) session, if any."""
     _require_student(current_user)
-    session = db.query(models.VPSession).filter_by(
+    progress = _get_active_progress(current_user, db)
+    query = db.query(models.VPSession).filter_by(
         student_id=current_user.id, completed=False
-    ).order_by(models.VPSession.started_at.desc()).first()
+    )
+    if progress:
+        query = query.join(
+            models.VPCurriculumLesson, models.VPSession.lesson_id == models.VPCurriculumLesson.id
+        ).filter(models.VPCurriculumLesson.curriculum_id == progress.curriculum_id)
+    session = query.order_by(models.VPSession.started_at.desc()).first()
     if not session:
         return None
     lesson = db.query(models.VPCurriculumLesson).filter_by(id=session.lesson_id).first()

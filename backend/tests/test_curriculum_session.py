@@ -399,3 +399,46 @@ def test_deleting_student_cleans_up_progress_and_sessions(client, admin_token, t
 
     r3 = client.get("/api/users/students", headers=auth_headers(tutor2_token))
     assert all(s["id"] != student2_id for s in r3.json())
+
+
+# ── Migration off retired per-level curricula ─────────────────────────────────
+
+def test_stale_session_from_retired_curriculum_is_ignored(client, accounts, tutor3_token, student3_id):
+    """A VPSession created before curriculum unification (pointing at a lesson
+    from a now-retired per-level curriculum) must never resurface as this
+    student's "active session" — that would trap the tutor/student on old,
+    retired lesson content (e.g. the old intermediate track's clique/hierarchy
+    lesson) even after they've been migrated onto the unified curriculum."""
+    import router
+
+    tutor3_id = accounts["demo-tutor3@peerlingo.test"]["user"]["id"]
+
+    prog = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
+    assert prog["curriculum_level"] == "foundational"
+
+    db = router.database.SessionLocal()
+    try:
+        old_curriculum = db.query(router.models.VPCurriculum).filter(
+            router.models.VPCurriculum.level == "intermediate"
+        ).first()
+        old_lesson = db.query(router.models.VPCurriculumLesson).filter_by(
+            curriculum_id=old_curriculum.id
+        ).first()
+        stale_session = router.models.VPSession(
+            tutor_id=tutor3_id, student_id=student3_id, lesson_id=old_lesson.id,
+            current_step=0, completed=False,
+        )
+        db.add(stale_session)
+        db.commit()
+        stale_session_id = stale_session.id
+    finally:
+        db.close()
+
+    prog2 = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
+    assert prog2["active_session_id"] != stale_session_id
+    assert prog2["curriculum_level"] == "foundational"
+    assert prog2["total_lessons"] == 20
+
+    my_session = client.get("/api/sessions/mine", headers=auth_headers(
+        accounts["demo-student3@peerlingo.test"]["token"])).json()
+    assert my_session is None or my_session.get("id") != stale_session_id

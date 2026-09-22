@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Uplo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, text
 from sqlalchemy.orm import Session
 
@@ -651,6 +651,35 @@ class AssignmentOut(BaseModel):
     vp_lesson_id: Optional[int]
     completed_by_me: bool
     created_at: str
+
+class CambridgeBenchmarkBody(BaseModel):
+    completed: bool = True
+    score: Optional[int] = Field(default=None, ge=0, le=25)
+    part1_score: Optional[int] = Field(default=None, ge=0, le=10)
+    part2_score: Optional[int] = Field(default=None, ge=0, le=10)
+    part3_score: Optional[int] = Field(default=None, ge=0, le=10)
+    part4_score: Optional[int] = Field(default=None, ge=0, le=10)
+    part5_score: Optional[int] = Field(default=None, ge=0, le=10)
+    notes: Optional[str] = None
+
+class CambridgeBenchmarkOut(BaseModel):
+    volume: int
+    completed: bool
+    score: Optional[int]
+    part1_score: Optional[int]
+    part2_score: Optional[int]
+    part3_score: Optional[int]
+    part4_score: Optional[int]
+    part5_score: Optional[int]
+    notes: Optional[str]
+    verified_by: Optional[int]
+    verified_by_name: Optional[str]
+    completed_at: Optional[str]
+
+class CambridgeBenchmarksOut(BaseModel):
+    volume1: CambridgeBenchmarkOut
+    volume2: CambridgeBenchmarkOut
+    improvement: Optional[int]
 
 class MeetingBody(BaseModel):
     title: str
@@ -2233,6 +2262,101 @@ def _ensure_student_enrolled(student: models.User, db: Session) -> None:
         db.commit()
 
 
+# Cambridge Pre A1 Starters volume -> the unified-curriculum lesson number after
+# which that volume is due (Volume 1 baseline after Lesson 2, Volume 2 final
+# benchmark after Lesson 15). The lesson number a volume GATES (i.e. the first
+# lesson that requires it to be verified) is one higher than this.
+CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON = {1: 2, 2: 15}
+CAMBRIDGE_OFFICIAL_PREP_URL = "https://www.cambridgeenglish.org/exams-and-tests/qualifications/young-learners/paper/starters/preparation/"
+
+
+def _ensure_cambridge_assignments(tutor_id: int, student_id: int, db: Session) -> None:
+    """Create the two mandatory Cambridge benchmark assignments for a student,
+    if missing. Reuses the existing Assignment/AssignmentCompletion system so
+    they show up in the tutor's and student's normal assignment lists; the
+    actual verified score lives in VPCambridgeBenchmark, recorded by the tutor.
+    Never reproduces exam content — only links to Cambridge's official page."""
+    curriculum = _unified_curriculum(db)
+    if not curriculum:
+        return
+    for volume, due_after_lesson in CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON.items():
+        lesson = db.query(models.VPCurriculumLesson).filter_by(
+            curriculum_id=curriculum.id, lesson_number=due_after_lesson,
+        ).first()
+        if not lesson:
+            continue
+        existing = db.query(models.Assignment).filter_by(
+            student_id=student_id, vp_lesson_id=lesson.id, type=models.AssignmentType.quiz,
+        ).first()
+        if existing:
+            continue
+        db.add(models.Assignment(
+            title=f"Cambridge Pre A1 Starters — Volume {volume} (Reading & Writing)",
+            description=(
+                f"Required benchmark. Complete the official Cambridge English Pre A1 Starters "
+                f"Reading & Writing sample paper, Volume {volume}, from Cambridge's own "
+                f"preparation page: {CAMBRIDGE_OFFICIAL_PREP_URL} — Listening is not required. "
+                f"This must be verified and scored by your tutor before you can continue past "
+                f"Lesson {due_after_lesson + 1}."
+            ),
+            type=models.AssignmentType.quiz,
+            due_date=None,
+            tutor_id=tutor_id,
+            student_id=student_id,
+            curriculum_id=None,
+            vp_lesson_id=lesson.id,
+        ))
+    db.commit()
+
+
+def _cambridge_benchmark_out(row, volume: int, db: Session) -> "CambridgeBenchmarkOut":
+    verifier = db.query(models.User).filter_by(id=row.verified_by).first() if row and row.verified_by else None
+    if not row:
+        return CambridgeBenchmarkOut(
+            volume=volume, completed=False, score=None,
+            part1_score=None, part2_score=None, part3_score=None, part4_score=None, part5_score=None,
+            notes=None, verified_by=None, verified_by_name=None, completed_at=None,
+        )
+    return CambridgeBenchmarkOut(
+        volume=volume, completed=row.completed, score=row.score,
+        part1_score=row.part1_score, part2_score=row.part2_score, part3_score=row.part3_score,
+        part4_score=row.part4_score, part5_score=row.part5_score,
+        notes=row.notes, verified_by=row.verified_by,
+        verified_by_name=verifier.full_name if verifier else None,
+        completed_at=row.completed_at.isoformat() if row.completed_at else None,
+    )
+
+
+def _cambridge_benchmarks_summary(student_id: int, db: Session) -> "CambridgeBenchmarksOut":
+    rows = db.query(models.VPCambridgeBenchmark).filter_by(student_id=student_id).all()
+    by_volume = {r.volume: r for r in rows}
+    v1, v2 = by_volume.get(1), by_volume.get(2)
+    improvement = None
+    if v1 and v2 and v1.score is not None and v2.score is not None:
+        improvement = v2.score - v1.score
+    return CambridgeBenchmarksOut(
+        volume1=_cambridge_benchmark_out(v1, 1, db),
+        volume2=_cambridge_benchmark_out(v2, 2, db),
+        improvement=improvement,
+    )
+
+
+def _cambridge_gate_error(student_id: int, lesson_number: int, db: Session) -> Optional[str]:
+    """If starting this lesson number requires a Cambridge volume that hasn't
+    been verified complete yet, return the error message to block on; else None."""
+    for volume, due_after_lesson in CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON.items():
+        if lesson_number == due_after_lesson + 1:
+            row = db.query(models.VPCambridgeBenchmark).filter_by(
+                student_id=student_id, volume=volume, completed=True,
+            ).first()
+            if not row:
+                return (
+                    f"The Cambridge Pre A1 Starters Volume {volume} benchmark must be "
+                    f"completed and verified by a tutor before starting Lesson {lesson_number}."
+                )
+    return None
+
+
 def _get_active_progress(student: models.User, db: Session):
     """Return the student's progress row for the single unified curriculum.
 
@@ -2318,6 +2442,7 @@ def create_pairing(body: PairingBody, current_user: models.User = Depends(get_cu
     pairing = models.TutorStudentPairing(tutor_id=body.tutor_id, student_id=body.student_id)
     db.add(pairing); db.commit(); db.refresh(pairing)
     _ensure_student_enrolled(student, db)
+    _ensure_cambridge_assignments(body.tutor_id, body.student_id, db)
     return _pairing_out(pairing, db)
 
 @router.delete("/api/admin/pairings/{pairing_id}", status_code=204)
@@ -2356,6 +2481,7 @@ def delete_user(user_id: int, current_user: models.User = Depends(get_current_us
         db.query(models.VPSession).filter(models.VPSession.student_id == user_id).delete(synchronize_session=False)
         db.query(models.VPStudentProgress).filter(models.VPStudentProgress.student_id == user_id).delete(synchronize_session=False)
         db.query(models.VPPlacementAssessment).filter(models.VPPlacementAssessment.student_id == user_id).delete(synchronize_session=False)
+        db.query(models.VPCambridgeBenchmark).filter(models.VPCambridgeBenchmark.student_id == user_id).delete(synchronize_session=False)
         db.query(models.StudentCurriculum).filter(models.StudentCurriculum.student_id == user_id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
@@ -2579,12 +2705,15 @@ def get_student_progress(student_id: int,
     if not progress:
         _ensure_student_enrolled(student, db)
         progress = _get_active_progress(student, db)
+    _ensure_cambridge_assignments(current_user.id, student_id, db)
+    cambridge_benchmarks = _cambridge_benchmarks_summary(student_id, db)
 
     if not progress:
         return {"student_id": student_id, "curriculum_id": None, "curriculum_title": None,
                 "curriculum_level": None, "total_lessons": 0, "current_lesson_number": 1,
                 "completed_count": 0, "next_lesson": None, "active_session_id": None,
-                "curriculum_complete": False, "lessons": []}
+                "curriculum_complete": False, "lessons": [],
+                "cambridge_benchmarks": cambridge_benchmarks}
 
     curriculum = db.query(models.VPCurriculum).filter_by(id=progress.curriculum_id).first()
     all_lessons = db.query(models.VPCurriculumLesson).filter_by(
@@ -2601,7 +2730,10 @@ def get_student_progress(student_id: int,
             lesson_number=progress.current_lesson_number,
         ).first()
         if cl:
-            next_lesson = {"id": cl.id, "lesson_number": cl.lesson_number, "title": cl.title}
+            next_lesson = {
+                "id": cl.id, "lesson_number": cl.lesson_number, "title": cl.title,
+                "locked_reason": _cambridge_gate_error(student_id, cl.lesson_number, db),
+            }
 
     lessons_out = []
     for l in all_lessons:
@@ -2634,7 +2766,60 @@ def get_student_progress(student_id: int,
         "lessons": lessons_out,
         "active_session_id": active_session.id if active_session else None,
         "curriculum_complete": curriculum_complete,
+        "cambridge_benchmarks": cambridge_benchmarks,
     }
+
+
+def _require_tutor_of_or_admin(current_user: models.User, student_id: int, db: Session) -> None:
+    if current_user.role == models.UserRole.tutor:
+        if not _tutor_paired_with(current_user.id, student_id, db):
+            raise HTTPException(status_code=403, detail="Not your student")
+    elif current_user.role != models.UserRole.admin:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+@router.get("/api/students/{student_id}/cambridge-benchmarks", response_model=CambridgeBenchmarksOut)
+def get_cambridge_benchmarks(student_id: int,
+                             current_user: models.User = Depends(get_current_user),
+                             db: Session = Depends(get_db)):
+    _require_tutor_of_or_admin(current_user, student_id, db)
+    student = db.query(models.User).filter_by(id=student_id, role=models.UserRole.student).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return _cambridge_benchmarks_summary(student_id, db)
+
+
+@router.post("/api/students/{student_id}/cambridge-benchmarks/{volume}", response_model=CambridgeBenchmarkOut)
+def record_cambridge_benchmark(student_id: int, volume: int, body: CambridgeBenchmarkBody,
+                               current_user: models.User = Depends(get_current_user),
+                               db: Session = Depends(get_db)):
+    """Tutor (or admin) records/updates a student's verified Cambridge Volume 1
+    or Volume 2 result. This is the source of truth the Lesson 3 / Lesson 16
+    progression gate checks — a descriptive homework note alone never unlocks
+    the next lesson, only a row here with completed=True does."""
+    if volume not in (1, 2):
+        raise HTTPException(status_code=400, detail="volume must be 1 or 2")
+    _require_tutor_of_or_admin(current_user, student_id, db)
+    student = db.query(models.User).filter_by(id=student_id, role=models.UserRole.student).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    row = db.query(models.VPCambridgeBenchmark).filter_by(student_id=student_id, volume=volume).first()
+    if not row:
+        row = models.VPCambridgeBenchmark(student_id=student_id, volume=volume)
+        db.add(row)
+    row.completed = body.completed
+    row.score = body.score
+    row.part1_score = body.part1_score
+    row.part2_score = body.part2_score
+    row.part3_score = body.part3_score
+    row.part4_score = body.part4_score
+    row.part5_score = body.part5_score
+    row.notes = body.notes
+    row.verified_by = current_user.id
+    row.completed_at = datetime.utcnow() if body.completed else None
+    db.commit(); db.refresh(row)
+    return _cambridge_benchmark_out(row, volume, db)
 
 
 class SessionBody(BaseModel):
@@ -2664,6 +2849,10 @@ def create_session(body: SessionBody,
     progress = _get_active_progress(student, db)
     if not progress or lesson.curriculum_id != progress.curriculum_id:
         raise HTTPException(status_code=400, detail="Lesson does not belong to this student's current curriculum")
+
+    gate_error = _cambridge_gate_error(body.student_id, lesson.lesson_number, db)
+    if gate_error:
+        raise HTTPException(status_code=400, detail=gate_error)
 
     # Reuse existing active session for same tutor+student+lesson
     existing = db.query(models.VPSession).filter_by(

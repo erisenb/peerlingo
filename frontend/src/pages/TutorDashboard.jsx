@@ -686,6 +686,112 @@ function ProfileRow({ label, value }) {
   )
 }
 
+function CambridgeBenchmarkRow({ volume, data, dueLabel, isEditing, form, setForm, saving, onEdit, onSave, onCancel }) {
+  const scoreField = (key, label, max) => (
+    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>{label}</label>
+      <input
+        type="number" min={0} max={max} value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        style={{ width: 56, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13 }}
+      />
+    </div>
+  )
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: `2px solid ${data.completed ? '#22c55e' : '#e5e7eb'}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#1e293b' }}>Volume {volume} {dueLabel}</div>
+          {data.completed ? (
+            <div style={{ fontSize: 12, color: '#15803d', fontWeight: 700, marginTop: 2 }}>
+              ✅ Verified {data.score !== null ? `— ${data.score} / 25` : ''}
+              {data.verified_by_name && <span style={{ color: '#64748b', fontWeight: 500 }}> by {data.verified_by_name}</span>}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginTop: 2 }}>Not yet recorded</div>
+          )}
+          {data.completed && [1, 2, 3, 4, 5].some(n => data[`part${n}_score`] !== null) && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {[1, 2, 3, 4, 5].map(n => data[`part${n}_score`] !== null && (
+                <span key={n} style={{ fontSize: 10.5, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.08)', borderRadius: 8, padding: '2px 8px' }}>
+                  Part {n}: {data[`part${n}_score`]}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {!isEditing && (
+          <button onClick={onEdit} style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer' }}>
+            {data.completed ? 'Edit' : '📝 Record Score'}
+          </button>
+        )}
+      </div>
+
+      {isEditing && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            {scoreField('score', 'Total (/25)', 25)}
+            {scoreField('part1_score', 'Part 1', 10)}
+            {scoreField('part2_score', 'Part 2', 10)}
+            {scoreField('part3_score', 'Part 3', 10)}
+            {scoreField('part4_score', 'Part 4', 10)}
+            {scoreField('part5_score', 'Part 5', 10)}
+          </div>
+          <textarea
+            placeholder="Notes (optional) — e.g. which questions were difficult"
+            value={form.notes}
+            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+            style={{ width: '100%', minHeight: 50, padding: 8, borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button onClick={onSave} disabled={saving} style={{ background: '#008080', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer' }}>
+              {saving ? 'Saving…' : 'Save & Verify'}
+            </button>
+            <button onClick={onCancel} disabled={saving} style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CambridgeBenchmarksCard({ benchmarks, editingBenchmark, benchmarkForm, setBenchmarkForm, savingBenchmark, onEdit, onSave, onCancel }) {
+  if (!benchmarks) return null
+  const { volume1, volume2, improvement } = benchmarks
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>📊 Cambridge Pre A1 Starters Benchmarks</h3>
+      <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>
+        Volume 1 (baseline, after Lesson 2) → Lessons 3–15 instruction → Volume 2 (final benchmark, after Lesson 15).
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CambridgeBenchmarkRow
+          volume={1} data={volume1} dueLabel="— baseline (after Lesson 2)"
+          isEditing={editingBenchmark === 1} form={benchmarkForm} setForm={setBenchmarkForm}
+          saving={savingBenchmark} onEdit={() => onEdit(1, volume1)} onSave={() => onSave(1)} onCancel={onCancel}
+        />
+        <CambridgeBenchmarkRow
+          volume={2} data={volume2} dueLabel="— final benchmark (after Lesson 15)"
+          isEditing={editingBenchmark === 2} form={benchmarkForm} setForm={setBenchmarkForm}
+          saving={savingBenchmark} onEdit={() => onEdit(2, volume2)} onSave={() => onSave(2)} onCancel={onCancel}
+        />
+        {improvement !== null && improvement !== undefined && (
+          <div style={{
+            textAlign: 'center', fontSize: 13, fontWeight: 800, padding: '10px 0', borderRadius: 10,
+            color: improvement >= 0 ? '#15803d' : '#991b1b',
+            background: improvement >= 0 ? '#f0fdf4' : '#fef2f2',
+          }}>
+            {improvement >= 0 ? '📈' : '📉'} Score change: {improvement >= 0 ? '+' : ''}{improvement} points (Volume 1 → Volume 2)
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function StudentAvatar({ student, size = 52 }) {
   const [err, setErr] = useState(false)
   if (student.has_photo && !err) {
@@ -802,6 +908,9 @@ function MyStudentsTab({ token }) {
   const [startingLesson, setStartingLesson] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [tempPassword, setTempPassword] = useState(null)
+  const [editingBenchmark, setEditingBenchmark] = useState(null) // 1 | 2 | null
+  const [benchmarkForm, setBenchmarkForm] = useState(null)
+  const [savingBenchmark, setSavingBenchmark] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -813,19 +922,24 @@ function MyStudentsTab({ token }) {
 
   useEffect(() => {
     setTempPassword(null)
+    setEditingBenchmark(null)
     if (!selected) {
       setPlacement(null); setShowResponses(false); setStudentProgress(null)
       return
     }
+    refreshProgress(selected.id)
+  }, [selected])
+
+  function refreshProgress(studentId) {
     setCurriculumLoading(true)
-    Promise.all([
-      fetch(`${API_BASE}/api/assessment/student/${selected.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    return Promise.all([
+      fetch(`${API_BASE}/api/assessment/student/${studentId}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`${API_BASE}/api/tutor/students/${selected.id}/progress`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API_BASE}/api/tutor/students/${studentId}/progress`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([place, prog]) => { setPlacement(place); setStudentProgress(prog) })
       .finally(() => setCurriculumLoading(false))
-  }, [selected])
+  }
 
   async function handleStartLesson() {
     if (!studentProgress?.next_lesson) return
@@ -841,13 +955,61 @@ function MyStudentsTab({ token }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ student_id: selected.id, lesson_id: studentProgress.next_lesson.id }),
       })
-      if (!res.ok) throw new Error('Failed to create session')
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || 'Failed to create session')
+      }
       const session = await res.json()
       navigate(`/dashboard/tutor/session/${session.id}`)
     } catch (e) {
-      alert('Could not start session. Please try again.')
+      alert(e.message || 'Could not start session. Please try again.')
     } finally {
       setStartingLesson(false)
+    }
+  }
+
+  function openBenchmarkForm(volume, existing) {
+    setEditingBenchmark(volume)
+    setBenchmarkForm({
+      score: existing?.score ?? '',
+      part1_score: existing?.part1_score ?? '',
+      part2_score: existing?.part2_score ?? '',
+      part3_score: existing?.part3_score ?? '',
+      part4_score: existing?.part4_score ?? '',
+      part5_score: existing?.part5_score ?? '',
+      notes: existing?.notes ?? '',
+    })
+  }
+
+  async function saveBenchmark(volume) {
+    setSavingBenchmark(true)
+    try {
+      const toIntOrNull = v => (v === '' || v === null || v === undefined ? null : Number(v))
+      const res = await fetch(`${API_BASE}/api/students/${selected.id}/cambridge-benchmarks/${volume}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          completed: true,
+          score: toIntOrNull(benchmarkForm.score),
+          part1_score: toIntOrNull(benchmarkForm.part1_score),
+          part2_score: toIntOrNull(benchmarkForm.part2_score),
+          part3_score: toIntOrNull(benchmarkForm.part3_score),
+          part4_score: toIntOrNull(benchmarkForm.part4_score),
+          part5_score: toIntOrNull(benchmarkForm.part5_score),
+          notes: benchmarkForm.notes || null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || 'Could not save this benchmark.')
+      }
+      setEditingBenchmark(null)
+      setBenchmarkForm(null)
+      await refreshProgress(selected.id)
+    } catch (e) {
+      alert(e.message || 'Could not save this benchmark. Please try again.')
+    } finally {
+      setSavingBenchmark(false)
     }
   }
 
@@ -1095,31 +1257,39 @@ function MyStudentsTab({ token }) {
               All {studentProgress.total_lessons} lessons completed! 🎓
             </div>
           ) : studentProgress.next_lesson ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>
-                  {studentProgress.active_session_id ? 'Session in progress' : 'Next up'}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>
+                    {studentProgress.active_session_id ? 'Session in progress' : 'Next up'}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d' }}>
+                    Lesson {studentProgress.next_lesson.lesson_number} — {studentProgress.next_lesson.title}
+                  </div>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d' }}>
-                  Lesson {studentProgress.next_lesson.lesson_number} — {studentProgress.next_lesson.title}
-                </div>
+                <button
+                  onClick={handleStartLesson}
+                  disabled={startingLesson || !!studentProgress.next_lesson.locked_reason}
+                  style={{
+                    background: studentProgress.next_lesson.locked_reason ? '#cbd5e1' : startingLesson ? '#94a3b8' : '#008080',
+                    color: '#fff', border: 'none', borderRadius: 12,
+                    padding: '12px 22px', fontSize: 14, fontWeight: 800,
+                    cursor: (startingLesson || studentProgress.next_lesson.locked_reason) ? 'not-allowed' : 'pointer',
+                    flexShrink: 0, transition: 'background 0.15s',
+                    boxShadow: studentProgress.next_lesson.locked_reason ? 'none' : '0 4px 14px rgba(0,128,128,0.3)',
+                  }}
+                >
+                  {studentProgress.next_lesson.locked_reason ? '🔒 Locked'
+                    : startingLesson ? 'Starting…'
+                    : studentProgress.active_session_id ? '▶ Resume Session'
+                    : '▶ Start Next Lesson'}
+                </button>
               </div>
-              <button
-                onClick={handleStartLesson}
-                disabled={startingLesson}
-                style={{
-                  background: startingLesson ? '#94a3b8' : '#008080',
-                  color: '#fff', border: 'none', borderRadius: 12,
-                  padding: '12px 22px', fontSize: 14, fontWeight: 800,
-                  cursor: startingLesson ? 'not-allowed' : 'pointer',
-                  flexShrink: 0, transition: 'background 0.15s',
-                  boxShadow: '0 4px 14px rgba(0,128,128,0.3)',
-                }}
-              >
-                {startingLesson ? 'Starting…'
-                  : studentProgress.active_session_id ? '▶ Resume Session'
-                  : '▶ Start Next Lesson'}
-              </button>
+              {studentProgress.next_lesson.locked_reason && (
+                <div style={{ marginTop: 12, background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: '#991b1b', fontWeight: 600 }}>
+                  🔒 {studentProgress.next_lesson.locked_reason} Record the score below to unlock it.
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ fontSize: 13, color: '#64748b' }}>
@@ -1128,6 +1298,18 @@ function MyStudentsTab({ token }) {
           )}
         </div>
       )}
+
+      {/* Cambridge Volume 1 / Volume 2 benchmarks */}
+      <CambridgeBenchmarksCard
+        benchmarks={studentProgress?.cambridge_benchmarks}
+        editingBenchmark={editingBenchmark}
+        benchmarkForm={benchmarkForm}
+        setBenchmarkForm={setBenchmarkForm}
+        savingBenchmark={savingBenchmark}
+        onEdit={openBenchmarkForm}
+        onSave={saveBenchmark}
+        onCancel={() => { setEditingBenchmark(null); setBenchmarkForm(null) }}
+      />
 
       {/* Placement assessment results */}
       {placement && (

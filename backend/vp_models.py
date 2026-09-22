@@ -257,3 +257,28 @@ class VPPlacementAssessment(Base):
     placement_level = Column(String, nullable=True) # Beginner A/B, Elementary, Pre-Intermediate, Intermediate
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class VPCambridgeBenchmark(Base):
+    """A tutor/admin-verified record of a student's official Cambridge Pre A1
+    Starters Reading & Writing sample paper result. Volume 1 is the baseline
+    benchmark (taken after Lesson 2) and Volume 2 is the final benchmark
+    (taken after Lesson 15) — see CAMBRIDGE_BENCHMARK_LESSON_NUMBERS in
+    router.py. Peerlingo never stores the exam's own questions or answers,
+    only the tutor-reported outcome."""
+    __tablename__ = "vp_cambridge_benchmarks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("vp_users.id"), nullable=False)
+    volume = Column(Integer, nullable=False)          # 1 or 2
+    completed = Column(Boolean, default=False, nullable=False)
+    score = Column(Integer, nullable=True)            # total out of 25
+    part1_score = Column(Integer, nullable=True)      # Reading & Writing Part 1
+    part2_score = Column(Integer, nullable=True)      # Part 2
+    part3_score = Column(Integer, nullable=True)      # Part 3
+    part4_score = Column(Integer, nullable=True)      # Part 4
+    part5_score = Column(Integer, nullable=True)      # Part 5
+    notes = Column(String, nullable=True)
+    verified_by = Column(Integer, ForeignKey("vp_users.id"), nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

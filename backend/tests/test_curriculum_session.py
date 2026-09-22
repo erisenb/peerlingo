@@ -241,12 +241,22 @@ class TestFullWorkflow:
 def test_curriculum_complete_after_final_lesson(client, admin_token, tutor1_token, student1_id):
     tutor_id = client.get("/api/auth/me", headers=auth_headers(tutor1_token)).json()["id"]
 
-    for _ in range(25):  # more than 20 lessons — must stop cleanly, never error
+    for _ in range(30):  # more than 20 lessons + 2 benchmark stops — must stop cleanly, never error
         prog = client.get(f"/api/tutor/students/{student1_id}/progress",
                            headers=auth_headers(tutor1_token)).json()
         if prog["curriculum_complete"]:
             break
-        lesson_id = prog["next_lesson"]["id"]
+        next_lesson = prog["next_lesson"]
+        if next_lesson.get("locked_reason"):
+            # Cambridge benchmark gate (Lesson 3 needs Volume 1, Lesson 16 needs Volume 2) —
+            # record a verified passing score, mirroring a tutor confirming a real result.
+            volume = 1 if "Volume 1" in next_lesson["locked_reason"] else 2
+            r = client.post(f"/api/students/{student1_id}/cambridge-benchmarks/{volume}",
+                             json={"completed": True, "score": 20},
+                             headers=auth_headers(tutor1_token))
+            assert r.status_code == 200
+            continue
+        lesson_id = next_lesson["id"]
         s = client.post("/api/sessions", json={"student_id": student1_id, "lesson_id": lesson_id},
                          headers=auth_headers(tutor1_token)).json()
         client.post(f"/api/sessions/{s['id']}/complete", headers=auth_headers(tutor1_token))
@@ -442,3 +452,93 @@ def test_stale_session_from_retired_curriculum_is_ignored(client, accounts, tuto
     my_session = client.get("/api/sessions/mine", headers=auth_headers(
         accounts["demo-student3@peerlingo.test"]["token"])).json()
     assert my_session is None or my_session.get("id") != stale_session_id
+
+
+# ── Cambridge Volume 1 / Volume 2 benchmarks ──────────────────────────────────
+
+def test_cambridge_assignments_exist_for_paired_student(client, tutor3_token, student3_id):
+    """Pairing (already established for tutor3/student3 in earlier tests) must
+    auto-create exactly one Volume 1 and one Volume 2 assignment, reusing the
+    existing Assignment/AssignmentCompletion system rather than a bespoke one."""
+    assignments = client.get("/api/assignments", headers=auth_headers(tutor3_token)).json()
+    mine = [a for a in assignments if a["student_id"] == student3_id]
+    vol1 = [a for a in mine if "Volume 1" in a["title"]]
+    vol2 = [a for a in mine if "Volume 2" in a["title"]]
+    assert len(vol1) == 1
+    assert len(vol2) == 1
+    assert "cambridgeenglish.org" in vol1[0]["description"]
+    assert vol1[0]["type"] == "quiz"
+
+
+def test_cambridge_volume1_gates_lesson_3(client, admin_token, tutor3_token, student3_id):
+    tutor3_id = client.get("/api/auth/me", headers=auth_headers(tutor3_token)).json()["id"]
+    existing = client.get("/api/admin/pairings", headers=auth_headers(admin_token)).json()
+    if not any(p["tutor_id"] == tutor3_id and p["student_id"] == student3_id for p in existing):
+        client.post("/api/admin/pairings", json={"tutor_id": tutor3_id, "student_id": student3_id},
+                     headers=auth_headers(admin_token))
+
+    # Drive progress up to (but not past) Lesson 3, unless already there.
+    for _ in range(5):
+        prog = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
+        next_lesson = prog["next_lesson"]
+        if next_lesson is None or next_lesson["lesson_number"] >= 3 or next_lesson.get("locked_reason"):
+            break
+        s = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": next_lesson["id"]},
+                         headers=auth_headers(tutor3_token)).json()
+        client.post(f"/api/sessions/{s['id']}/complete", headers=auth_headers(tutor3_token))
+
+    prog = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
+    assert prog["next_lesson"]["lesson_number"] == 3
+    assert prog["next_lesson"]["locked_reason"] is not None
+    assert "Volume 1" in prog["next_lesson"]["locked_reason"]
+
+    # Starting Lesson 3 without a verified benchmark must be rejected.
+    blocked = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": prog["next_lesson"]["id"]},
+                           headers=auth_headers(tutor3_token))
+    assert blocked.status_code == 400
+
+    # Recording a verified Volume 1 score must unlock Lesson 3.
+    recorded = client.post(
+        f"/api/students/{student3_id}/cambridge-benchmarks/1",
+        json={"completed": True, "score": 18, "part1_score": 4, "part2_score": 4,
+              "part3_score": 3, "part4_score": 4, "part5_score": 3},
+        headers=auth_headers(tutor3_token),
+    )
+    assert recorded.status_code == 200
+    body = recorded.json()
+    assert body["completed"] is True and body["score"] == 18 and body["part3_score"] == 3
+
+    prog2 = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
+    assert prog2["next_lesson"]["locked_reason"] is None
+
+    unblocked = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": prog2["next_lesson"]["id"]},
+                             headers=auth_headers(tutor3_token))
+    assert unblocked.status_code == 201
+
+
+def test_cambridge_benchmark_permissions_and_improvement(client, tutor2_token, tutor3_token, student3_id, accounts):
+    student3_token = accounts["demo-student3@peerlingo.test"]["token"]
+
+    # A student cannot record their own benchmark.
+    r = client.post(f"/api/students/{student3_id}/cambridge-benchmarks/1",
+                     json={"completed": True, "score": 20}, headers=auth_headers(student3_token))
+    assert r.status_code == 403
+
+    # An unpaired tutor cannot view or record a student's benchmark.
+    r2 = client.get(f"/api/students/{student3_id}/cambridge-benchmarks", headers=auth_headers(tutor2_token))
+    assert r2.status_code == 403
+
+    # Only volumes 1 and 2 are valid.
+    r3 = client.post(f"/api/students/{student3_id}/cambridge-benchmarks/3",
+                      json={"completed": True, "score": 20}, headers=auth_headers(tutor3_token))
+    assert r3.status_code == 400
+
+    # Volume 1 (score 18) was recorded in the previous test; record Volume 2 and check improvement.
+    r4 = client.post(f"/api/students/{student3_id}/cambridge-benchmarks/2",
+                      json={"completed": True, "score": 23}, headers=auth_headers(tutor3_token))
+    assert r4.status_code == 200
+
+    summary = client.get(f"/api/students/{student3_id}/cambridge-benchmarks", headers=auth_headers(tutor3_token)).json()
+    assert summary["volume1"]["score"] == 18
+    assert summary["volume2"]["score"] == 23
+    assert summary["improvement"] == 5

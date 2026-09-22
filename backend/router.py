@@ -2341,22 +2341,6 @@ def _cambridge_benchmarks_summary(student_id: int, db: Session) -> "CambridgeBen
     )
 
 
-def _cambridge_gate_error(student_id: int, lesson_number: int, db: Session) -> Optional[str]:
-    """If starting this lesson number requires a Cambridge volume that hasn't
-    been verified complete yet, return the error message to block on; else None."""
-    for volume, due_after_lesson in CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON.items():
-        if lesson_number == due_after_lesson + 1:
-            row = db.query(models.VPCambridgeBenchmark).filter_by(
-                student_id=student_id, volume=volume, completed=True,
-            ).first()
-            if not row:
-                return (
-                    f"The Cambridge Pre A1 Starters Volume {volume} benchmark must be "
-                    f"completed and verified by a tutor before starting Lesson {lesson_number}."
-                )
-    return None
-
-
 def _get_active_progress(student: models.User, db: Session):
     """Return the student's progress row for the single unified curriculum.
 
@@ -2730,10 +2714,7 @@ def get_student_progress(student_id: int,
             lesson_number=progress.current_lesson_number,
         ).first()
         if cl:
-            next_lesson = {
-                "id": cl.id, "lesson_number": cl.lesson_number, "title": cl.title,
-                "locked_reason": _cambridge_gate_error(student_id, cl.lesson_number, db),
-            }
+            next_lesson = {"id": cl.id, "lesson_number": cl.lesson_number, "title": cl.title}
 
     lessons_out = []
     for l in all_lessons:
@@ -2849,10 +2830,6 @@ def create_session(body: SessionBody,
     progress = _get_active_progress(student, db)
     if not progress or lesson.curriculum_id != progress.curriculum_id:
         raise HTTPException(status_code=400, detail="Lesson does not belong to this student's current curriculum")
-
-    gate_error = _cambridge_gate_error(body.student_id, lesson.lesson_number, db)
-    if gate_error:
-        raise HTTPException(status_code=400, detail=gate_error)
 
     # Reuse existing active session for same tutor+student+lesson
     existing = db.query(models.VPSession).filter_by(

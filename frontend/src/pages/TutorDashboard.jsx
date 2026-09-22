@@ -1257,39 +1257,31 @@ function MyStudentsTab({ token }) {
               All {studentProgress.total_lessons} lessons completed! 🎓
             </div>
           ) : studentProgress.next_lesson ? (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>
-                    {studentProgress.active_session_id ? 'Session in progress' : 'Next up'}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d' }}>
-                    Lesson {studentProgress.next_lesson.lesson_number} — {studentProgress.next_lesson.title}
-                  </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>
+                  {studentProgress.active_session_id ? 'Session in progress' : 'Next up'}
                 </div>
-                <button
-                  onClick={handleStartLesson}
-                  disabled={startingLesson || !!studentProgress.next_lesson.locked_reason}
-                  style={{
-                    background: studentProgress.next_lesson.locked_reason ? '#cbd5e1' : startingLesson ? '#94a3b8' : '#008080',
-                    color: '#fff', border: 'none', borderRadius: 12,
-                    padding: '12px 22px', fontSize: 14, fontWeight: 800,
-                    cursor: (startingLesson || studentProgress.next_lesson.locked_reason) ? 'not-allowed' : 'pointer',
-                    flexShrink: 0, transition: 'background 0.15s',
-                    boxShadow: studentProgress.next_lesson.locked_reason ? 'none' : '0 4px 14px rgba(0,128,128,0.3)',
-                  }}
-                >
-                  {studentProgress.next_lesson.locked_reason ? '🔒 Locked'
-                    : startingLesson ? 'Starting…'
-                    : studentProgress.active_session_id ? '▶ Resume Session'
-                    : '▶ Start Next Lesson'}
-                </button>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d' }}>
+                  Lesson {studentProgress.next_lesson.lesson_number} — {studentProgress.next_lesson.title}
+                </div>
               </div>
-              {studentProgress.next_lesson.locked_reason && (
-                <div style={{ marginTop: 12, background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: '#991b1b', fontWeight: 600 }}>
-                  🔒 {studentProgress.next_lesson.locked_reason} Record the score below to unlock it.
-                </div>
-              )}
+              <button
+                onClick={handleStartLesson}
+                disabled={startingLesson}
+                style={{
+                  background: startingLesson ? '#94a3b8' : '#008080',
+                  color: '#fff', border: 'none', borderRadius: 12,
+                  padding: '12px 22px', fontSize: 14, fontWeight: 800,
+                  cursor: startingLesson ? 'not-allowed' : 'pointer',
+                  flexShrink: 0, transition: 'background 0.15s',
+                  boxShadow: '0 4px 14px rgba(0,128,128,0.3)',
+                }}
+              >
+                {startingLesson ? 'Starting…'
+                  : studentProgress.active_session_id ? '▶ Resume Session'
+                  : '▶ Start Next Lesson'}
+              </button>
             </div>
           ) : (
             <div style={{ fontSize: 13, color: '#64748b' }}>

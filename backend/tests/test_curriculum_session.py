@@ -241,22 +241,12 @@ class TestFullWorkflow:
 def test_curriculum_complete_after_final_lesson(client, admin_token, tutor1_token, student1_id):
     tutor_id = client.get("/api/auth/me", headers=auth_headers(tutor1_token)).json()["id"]
 
-    for _ in range(30):  # more than 20 lessons + 2 benchmark stops — must stop cleanly, never error
+    for _ in range(25):  # more than 20 lessons — must stop cleanly, never error
         prog = client.get(f"/api/tutor/students/{student1_id}/progress",
                            headers=auth_headers(tutor1_token)).json()
         if prog["curriculum_complete"]:
             break
-        next_lesson = prog["next_lesson"]
-        if next_lesson.get("locked_reason"):
-            # Cambridge benchmark gate (Lesson 3 needs Volume 1, Lesson 16 needs Volume 2) —
-            # record a verified passing score, mirroring a tutor confirming a real result.
-            volume = 1 if "Volume 1" in next_lesson["locked_reason"] else 2
-            r = client.post(f"/api/students/{student1_id}/cambridge-benchmarks/{volume}",
-                             json={"completed": True, "score": 20},
-                             headers=auth_headers(tutor1_token))
-            assert r.status_code == 200
-            continue
-        lesson_id = next_lesson["id"]
+        lesson_id = prog["next_lesson"]["id"]
         s = client.post("/api/sessions", json={"student_id": student1_id, "lesson_id": lesson_id},
                          headers=auth_headers(tutor1_token)).json()
         client.post(f"/api/sessions/{s['id']}/complete", headers=auth_headers(tutor1_token))
@@ -470,7 +460,7 @@ def test_cambridge_assignments_exist_for_paired_student(client, tutor3_token, st
     assert vol1[0]["type"] == "quiz"
 
 
-def test_cambridge_volume1_gates_lesson_3(client, admin_token, tutor3_token, student3_id):
+def test_cambridge_benchmark_does_not_block_lesson_3(client, admin_token, tutor3_token, student3_id):
     tutor3_id = client.get("/api/auth/me", headers=auth_headers(tutor3_token)).json()["id"]
     existing = client.get("/api/admin/pairings", headers=auth_headers(admin_token)).json()
     if not any(p["tutor_id"] == tutor3_id and p["student_id"] == student3_id for p in existing):
@@ -481,7 +471,7 @@ def test_cambridge_volume1_gates_lesson_3(client, admin_token, tutor3_token, stu
     for _ in range(5):
         prog = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
         next_lesson = prog["next_lesson"]
-        if next_lesson is None or next_lesson["lesson_number"] >= 3 or next_lesson.get("locked_reason"):
+        if next_lesson is None or next_lesson["lesson_number"] >= 3:
             break
         s = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": next_lesson["id"]},
                          headers=auth_headers(tutor3_token)).json()
@@ -489,15 +479,15 @@ def test_cambridge_volume1_gates_lesson_3(client, admin_token, tutor3_token, stu
 
     prog = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
     assert prog["next_lesson"]["lesson_number"] == 3
-    assert prog["next_lesson"]["locked_reason"] is not None
-    assert "Volume 1" in prog["next_lesson"]["locked_reason"]
+    assert "locked_reason" not in prog["next_lesson"]
 
-    # Starting Lesson 3 without a verified benchmark must be rejected.
-    blocked = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": prog["next_lesson"]["id"]},
-                           headers=auth_headers(tutor3_token))
-    assert blocked.status_code == 400
+    # Starting Lesson 3 must succeed even with no Volume 1 benchmark recorded yet —
+    # the benchmark is a tracked to-do for the tutor, not a progression gate.
+    unblocked = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": prog["next_lesson"]["id"]},
+                             headers=auth_headers(tutor3_token))
+    assert unblocked.status_code == 201
 
-    # Recording a verified Volume 1 score must unlock Lesson 3.
+    # Recording a verified Volume 1 score afterward still works and is tracked.
     recorded = client.post(
         f"/api/students/{student3_id}/cambridge-benchmarks/1",
         json={"completed": True, "score": 18, "part1_score": 4, "part2_score": 4,
@@ -507,13 +497,6 @@ def test_cambridge_volume1_gates_lesson_3(client, admin_token, tutor3_token, stu
     assert recorded.status_code == 200
     body = recorded.json()
     assert body["completed"] is True and body["score"] == 18 and body["part3_score"] == 3
-
-    prog2 = client.get(f"/api/tutor/students/{student3_id}/progress", headers=auth_headers(tutor3_token)).json()
-    assert prog2["next_lesson"]["locked_reason"] is None
-
-    unblocked = client.post("/api/sessions", json={"student_id": student3_id, "lesson_id": prog2["next_lesson"]["id"]},
-                             headers=auth_headers(tutor3_token))
-    assert unblocked.status_code == 201
 
 
 def test_cambridge_benchmark_permissions_and_improvement(client, tutor2_token, tutor3_token, student3_id, accounts):

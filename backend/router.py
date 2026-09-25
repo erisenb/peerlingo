@@ -904,10 +904,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
                        minor_consent_version=req.minor_consent_version if req.minor_consent_version else None,
                        minor_consent_accepted_at=now if req.minor_consent_version else None)
     db.add(user); db.commit(); db.refresh(user)
-    if req.role == models.UserRole.student:
-        assessment = models.VPPlacementAssessment(student_id=user.id)
-        db.add(assessment)
-        db.commit()
     return AuthResponse(access_token=create_access_token(user.id),
                         token_type="bearer", user=_user_out(user))
 
@@ -1063,15 +1059,6 @@ def dev_ensure_accounts(db: Session = Depends(get_db)):
         ).first()
         if not existing:
             db.add(models.TutorStudentPairing(tutor_id=tutor.id, student_id=student.id))
-
-    # Ensure demo students have a placement assessment
-    for email in ("demo-student1@peerlingo.test", "demo-student2@peerlingo.test", "demo-student3@peerlingo.test"):
-        student = users_by_email.get(email)
-        if not student:
-            continue
-        existing_a = db.query(models.VPPlacementAssessment).filter_by(student_id=student.id).first()
-        if not existing_a:
-            db.add(models.VPPlacementAssessment(student_id=student.id))
 
     db.commit()
     return result
@@ -2484,32 +2471,12 @@ def get_admin_stats(current_user: models.User = Depends(get_current_user), db: S
     }
 
 
-# ── Placement Assessment ──────────────────────────────────────────────────────
-
-_PLACEMENT_ANSWERS = {
-    'vocab_q1': 'a', 'vocab_q2': 'b', 'vocab_q3': 'c',
-    'vocab_q4': 'b', 'vocab_q5': 'c', 'vocab_q6': 'd',
-    'read_q1': 'c', 'read_q2': 'b', 'read_q3': 'd', 'read_q4': 'b',
-    'read_q5': 'b', 'read_q6': 'c', 'read_q7': 'c', 'read_q8': 'c',
-    'gram_q1': 'a', 'gram_q2': 'b', 'gram_q3': 'c', 'gram_q4': 'b', 'gram_q5': 'c',
-}
-
-def _score_placement(answers: dict) -> dict:
-    vocab_score = sum(1 for k in [f'vocab_q{i}' for i in range(1, 7)]
-                      if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
-    reading_score = sum(1 for k in [f'read_q{i}' for i in range(1, 9)]
-                        if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
-    grammar_score = sum(1 for k in [f'gram_q{i}' for i in range(1, 6)]
-                        if answers.get(k) == _PLACEMENT_ANSWERS.get(k))
-    total = vocab_score + reading_score + grammar_score
-    if total <= 3:   level = "Beginner A"
-    elif total <= 7: level = "Beginner B"
-    elif total <= 11: level = "Elementary"
-    elif total <= 15: level = "Pre-Intermediate"
-    else:            level = "Intermediate"
-    return dict(vocab_score=vocab_score, reading_score=reading_score,
-                grammar_score=grammar_score, total_score=total, placement_level=level)
-
+# ── Placement Assessment (retired) ────────────────────────────────────────────
+# The old self-serve English diagnostic (take-it-yourself, auto-graded) has been
+# retired in favor of the tutor-verified Cambridge Pre A1 Starters Volume 1
+# benchmark, which now serves as the initial diagnostic. Submission is gone,
+# but historical results for students who already completed the old diagnostic
+# are preserved untouched and remain visible to their tutor/admin below.
 
 def _assessment_out(a: models.VPPlacementAssessment) -> dict:
     return {
@@ -2520,41 +2487,6 @@ def _assessment_out(a: models.VPPlacementAssessment) -> dict:
         "completed_at": a.completed_at.isoformat() if a.completed_at else None,
         "answers": json.loads(a.answers) if a.answers else None,
     }
-
-
-@router.get("/api/assessment/mine")
-def get_my_assessment(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _require_student(current_user)
-    a = db.query(models.VPPlacementAssessment).filter_by(student_id=current_user.id).first()
-    if not a:
-        a = models.VPPlacementAssessment(student_id=current_user.id)
-        db.add(a)
-        db.commit()
-        db.refresh(a)
-    return _assessment_out(a)
-
-
-@router.post("/api/assessment/submit")
-def submit_assessment(body: dict, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _require_student(current_user)
-    a = db.query(models.VPPlacementAssessment).filter_by(student_id=current_user.id).first()
-    if not a:
-        a = models.VPPlacementAssessment(student_id=current_user.id)
-        db.add(a)
-    if a.completed:
-        raise HTTPException(status_code=400, detail="Assessment already submitted")
-    answers = body.get("answers", {})
-    scores = _score_placement(answers)
-    a.answers = json.dumps(answers)
-    a.vocab_score = scores["vocab_score"]
-    a.reading_score = scores["reading_score"]
-    a.grammar_score = scores["grammar_score"]
-    a.total_score = scores["total_score"]
-    a.placement_level = scores["placement_level"]
-    a.completed = True
-    a.completed_at = datetime.utcnow()
-    db.commit()
-    return scores
 
 
 @router.get("/api/assessment/student/{student_id}")

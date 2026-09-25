@@ -1303,11 +1303,13 @@ function MyStudentsTab({ token }) {
         onCancel={() => { setEditingBenchmark(null); setBenchmarkForm(null) }}
       />
 
-      {/* Placement assessment results */}
-      {placement && (
+      {/* Legacy placement assessment results — the old self-serve diagnostic was
+          retired in favor of the Cambridge Volume 1 benchmark above, but a
+          student's prior result (if any) stays visible here for reference. */}
+      {placement?.completed && (
         <div style={{ marginBottom: 26 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>🎓 Placement Assessment</h3>
-          {placement.completed ? (() => {
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>🎓 English Diagnostic (Legacy)</h3>
+          {(() => {
             const LEVEL_COLORS = {
               'Beginner A': { color: '#15803d', bg: '#dcfce7' },
               'Beginner B': { color: '#0369a1', bg: '#dbeafe' },
@@ -1346,13 +1348,7 @@ function MyStudentsTab({ token }) {
                 {showResponses && placement.answers && <ResponsesView placement={placement} />}
               </div>
             )
-          })() : (
-            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', border: '1.5px dashed #cbd5e1' }}>
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
-                This student hasn't completed their placement assessment yet.
-              </p>
-            </div>
-          )}
+          })()}
         </div>
       )}
 

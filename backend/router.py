@@ -2257,12 +2257,24 @@ CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON = {1: 2, 2: 15}
 CAMBRIDGE_OFFICIAL_PREP_URL = "https://www.cambridgeenglish.org/exams-and-tests/qualifications/young-learners/paper/starters/preparation/"
 
 
+def _cambridge_assignment_description(volume: int) -> str:
+    return (
+        f"Complete the official Cambridge English Pre A1 Starters Reading & Writing "
+        f"sample paper, Volume {volume}, using Cambridge's own preparation page: "
+        f"{CAMBRIDGE_OFFICIAL_PREP_URL} — Listening is not required, Reading & Writing only. "
+        f"Once you've completed it, your tutor will record and verify your score."
+    )
+
+
 def _ensure_cambridge_assignments(tutor_id: int, student_id: int, db: Session) -> None:
-    """Create the two mandatory Cambridge benchmark assignments for a student,
-    if missing. Reuses the existing Assignment/AssignmentCompletion system so
-    they show up in the tutor's and student's normal assignment lists; the
-    actual verified score lives in VPCambridgeBenchmark, recorded by the tutor.
-    Never reproduces exam content — only links to Cambridge's official page."""
+    """Create the two Cambridge benchmark assignments for a student if missing,
+    and re-sync their title/description on every call (same always-overwrite
+    pattern as apply_lesson_data_v2/seed_curriculum) so wording fixes reach
+    already-created rows, not just new ones. Reuses the existing
+    Assignment/AssignmentCompletion system so they show up in the tutor's and
+    student's normal assignment lists; the actual verified score lives in
+    VPCambridgeBenchmark, recorded by the tutor. Never reproduces exam content
+    — only links to Cambridge's official page."""
     curriculum = _unified_curriculum(db)
     if not curriculum:
         return
@@ -2272,27 +2284,24 @@ def _ensure_cambridge_assignments(tutor_id: int, student_id: int, db: Session) -
         ).first()
         if not lesson:
             continue
+        title = f"Cambridge Pre A1 Starters — Volume {volume} (Reading & Writing)"
+        description = _cambridge_assignment_description(volume)
         existing = db.query(models.Assignment).filter_by(
             student_id=student_id, vp_lesson_id=lesson.id, type=models.AssignmentType.quiz,
         ).first()
         if existing:
-            continue
-        db.add(models.Assignment(
-            title=f"Cambridge Pre A1 Starters — Volume {volume} (Reading & Writing)",
-            description=(
-                f"Required benchmark. Complete the official Cambridge English Pre A1 Starters "
-                f"Reading & Writing sample paper, Volume {volume}, from Cambridge's own "
-                f"preparation page: {CAMBRIDGE_OFFICIAL_PREP_URL} — Listening is not required. "
-                f"This must be verified and scored by your tutor before you can continue past "
-                f"Lesson {due_after_lesson + 1}."
-            ),
-            type=models.AssignmentType.quiz,
-            due_date=None,
-            tutor_id=tutor_id,
-            student_id=student_id,
-            curriculum_id=None,
-            vp_lesson_id=lesson.id,
-        ))
+            existing.title = title
+            existing.description = description
+        else:
+            db.add(models.Assignment(
+                title=title, description=description,
+                type=models.AssignmentType.quiz,
+                due_date=None,
+                tutor_id=tutor_id,
+                student_id=student_id,
+                curriculum_id=None,
+                vp_lesson_id=lesson.id,
+            ))
     db.commit()
 
 

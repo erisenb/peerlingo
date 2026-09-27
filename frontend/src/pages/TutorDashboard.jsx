@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { API_BASE } from '../api'
 import AvailabilityPanel from '../components/AvailabilityPanel'
+import Linkified from '../utils/linkify'
 
 const BLUE = '#008080'
 const LIGHT_BLUE = 'rgba(0,128,128,0.1)'
@@ -1394,8 +1395,13 @@ function MyStudentsTab({ token }) {
                     )}
                   </div>
                   {hw && (
-                    <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, marginTop: 4, marginLeft: 24 }}>
-                      {hw.type === 'quiz' ? '🧪' : '📇'} {hw.title}
+                    <div style={{ marginTop: 4, marginLeft: 24 }}>
+                      <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600 }}>
+                        {hw.type === 'quiz' ? '🧪' : '📇'} {hw.title}
+                      </div>
+                      {hw.description && (
+                        <Linkified text={hw.description} style={{ display: 'block', fontSize: 11.5, color: '#64748b', lineHeight: 1.5, marginTop: 2 }} />
+                      )}
                     </div>
                   )}
                 </div>

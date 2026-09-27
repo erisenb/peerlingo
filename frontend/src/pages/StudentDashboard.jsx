@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { API_BASE } from '../api'
 import AvailabilityPanel from '../components/AvailabilityPanel'
+import Linkified from '../utils/linkify'
 
 const AMBER  = '#FF6F61'
 const BLUE   = '#008080'
@@ -299,13 +300,16 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
               const tp = TIPO_ES[a.type] || TIPO_ES.homework
               return (
                 <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: `1px solid ${tp.bg}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: a.vp_lesson_id ? 10 : 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (a.description || a.vp_lesson_id) ? 8 : 0 }}>
                     <div>
                       <span style={{ background: tp.bg, color: tp.color, borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginRight: 8 }}>{tp.icon} {tp.label}</span>
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{a.title}</span>
                     </div>
                     {a.due_date && <span style={{ fontSize: 12, color: '#94a3b8' }}>Vence: {a.due_date}</span>}
                   </div>
+                  {a.description && (
+                    <Linkified text={a.description} style={{ display: 'block', fontSize: 12.5, color: '#475569', lineHeight: 1.6, marginBottom: a.vp_lesson_id ? 10 : 0 }} />
+                  )}
                   {a.vp_lesson_id && (
                     <button
                       onClick={() => setFlashcardLesson(a.vp_lesson_id)}
@@ -425,7 +429,7 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
         <h2 style={{ fontSize: 20, fontWeight: 900, color: '#1e293b', marginBottom: 10 }}>{assignment.title}</h2>
 
         {assignment.description && (
-          <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.7, marginBottom: 14 }}>{assignment.description}</p>
+          <Linkified text={assignment.description} style={{ display: 'block', fontSize: 14, color: '#475569', lineHeight: 1.7, marginBottom: 14 }} />
         )}
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -566,7 +570,7 @@ function TareasTab({ token, assignments, onComplete, onUncomplete }) {
                       )}
                     </div>
                     {a.description && (
-                      <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, marginBottom: 6 }}>{a.description}</p>
+                      <Linkified text={a.description} style={{ display: 'block', fontSize: 13, color: '#475569', lineHeight: 1.6, marginBottom: 6 }} />
                     )}
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                       {a.due_date && (

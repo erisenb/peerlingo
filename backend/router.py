@@ -2090,18 +2090,6 @@ def tutor_get_student_curriculum(student_id: int, current_user: models.User = De
     return _student_curriculum_items(student_id, db)
 
 
-@router.get("/api/curriculum/lessons/{lesson_id}/flashcards")
-def get_lesson_flashcards(lesson_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    hw = db.query(models.VPHomeworkAssignment).filter(models.VPHomeworkAssignment.lesson_id == lesson_id).first()
-    if not hw:
-        raise HTTPException(status_code=404, detail="No flashcard data for this lesson")
-    lesson = db.query(models.VPCurriculumLesson).filter(models.VPCurriculumLesson.id == lesson_id).first()
-    return {
-        "lesson_title": lesson.title if lesson else "",
-        "vocabulary": hw.vocabulary,
-        "expressions": hw.expressions,
-    }
-
 # ── Assignments ───────────────────────────────────────────────────────────────
 
 @router.get("/api/assignments", response_model=list[AssignmentOut])

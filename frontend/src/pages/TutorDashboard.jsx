@@ -901,7 +901,6 @@ function MyStudentsTab({ token }) {
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
-  const [saving, setSaving] = useState(false)
   const [curriculumLoading, setCurriculumLoading] = useState(false)
   const [placement, setPlacement] = useState(null)
   const [showResponses, setShowResponses] = useState(false)
@@ -1031,32 +1030,6 @@ function MyStudentsTab({ token }) {
     } finally {
       setResetting(false)
     }
-  }
-
-  async function deleteAssignment(id) {
-    await fetch(`${API_BASE}/api/assignments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-    setAssignments(a => a.filter(x => x.id !== id))
-  }
-
-  async function quickAssign(lesson, type, label) {
-    setSaving(true)
-    try {
-      await fetch(`${API_BASE}/api/assignments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          title: `${label}: ${lesson.title}`,
-          description: '',
-          type,
-          due_date: null,
-          student_id: selected.id,
-          curriculum_id: null,
-          vp_lesson_id: lesson.id,
-        }),
-      })
-      const res = await fetch(`${API_BASE}/api/assignments`, { headers: { Authorization: `Bearer ${token}` } })
-      setAssignments(await res.json())
-    } finally { setSaving(false) }
   }
 
   if (loading) return <Placeholder text="Loading students…" />
@@ -1377,38 +1350,32 @@ function MyStudentsTab({ token }) {
             return (
               <div key={lesson.id} style={{
                 borderRadius: 12, padding: '14px 16px', border: `2px solid ${borderColor}`,
-                background: bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                background: bg,
               }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, color: isDone ? '#16a34a' : isNext ? '#008080' : '#94a3b8', width: 16, textAlign: 'center' }}>
-                      {icon}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: isDone ? '#16a34a' : isNext ? '#008080' : '#94a3b8', width: 16, textAlign: 'center' }}>
+                    {icon}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                    Lesson {lesson.lesson_number}/{studentProgress.total_lessons}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{lesson.title}</span>
+                  {isNext && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.1)', borderRadius: 20, padding: '2px 9px' }}>
+                      Next
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap' }}>
-                      Lesson {lesson.lesson_number}/{studentProgress.total_lessons}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: isDone ? '#374151' : '#1e293b' }}>{lesson.title}</span>
-                    {isNext && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#008080', background: 'rgba(0,128,128,0.1)', borderRadius: 20, padding: '2px 9px' }}>
-                        Next
-                      </span>
-                    )}
-                  </div>
-                  {hw && (
-                    <div style={{ marginTop: 4, marginLeft: 24 }}>
-                      <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600 }}>
-                        {hw.type === 'quiz' ? '🧪' : '📇'} {hw.title}
-                      </div>
-                      {hw.description && (
-                        <Linkified text={hw.description} style={{ display: 'block', fontSize: 11.5, color: '#64748b', lineHeight: 1.5, marginTop: 2 }} />
-                      )}
-                    </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                  <button onClick={() => quickAssign(lesson, 'practice', '📇 Flashcards')} disabled={saving} style={smallBtn('#6366f1')}>📇 Flashcards</button>
-                  <button onClick={() => quickAssign(lesson, 'quiz', '🧪 Quiz')} disabled={saving} style={smallBtn('#FF6F61')}>🧪 Quiz</button>
-                </div>
+                {hw && (
+                  <div style={{ marginTop: 4, marginLeft: 24 }}>
+                    <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600 }}>
+                      🧪 {hw.title}
+                    </div>
+                    {hw.description && (
+                      <Linkified text={hw.description} style={{ display: 'block', fontSize: 11.5, color: '#64748b', lineHeight: 1.5, marginTop: 2 }} />
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}

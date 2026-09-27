@@ -178,7 +178,6 @@ function ActiveSessionBanner({ token }) {
 
 function InicioTab({ user, meetings, assignments, onTabChange, token }) {
   const { t } = useLanguage()
-  const [flashcardLesson, setFlashcardLesson] = useState(null)
   const now = new Date()
   const upcomingMeetings = meetings
     .filter(m => {
@@ -300,7 +299,7 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
               const tp = TIPO_ES[a.type] || TIPO_ES.homework
               return (
                 <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: `1px solid ${tp.bg}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (a.description || a.vp_lesson_id) ? 8 : 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: a.description ? 8 : 0 }}>
                     <div>
                       <span style={{ background: tp.bg, color: tp.color, borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginRight: 8 }}>{tp.icon} {tp.label}</span>
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{a.title}</span>
@@ -308,19 +307,7 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
                     {a.due_date && <span style={{ fontSize: 12, color: '#94a3b8' }}>Vence: {a.due_date}</span>}
                   </div>
                   {a.description && (
-                    <Linkified text={a.description} style={{ display: 'block', fontSize: 12.5, color: '#475569', lineHeight: 1.6, marginBottom: a.vp_lesson_id ? 10 : 0 }} />
-                  )}
-                  {a.vp_lesson_id && (
-                    <button
-                      onClick={() => setFlashcardLesson(a.vp_lesson_id)}
-                      style={{
-                        width: '100%', background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
-                        color: '#fff', border: 'none', borderRadius: 10, padding: '9px 14px',
-                        fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      }}>
-                      📇 Ver y Estudiar Flashcards
-                    </button>
+                    <Linkified text={a.description} style={{ display: 'block', fontSize: 12.5, color: '#475569', lineHeight: 1.6 }} />
                   )}
                 </div>
               )
@@ -333,65 +320,14 @@ function InicioTab({ user, meetings, assignments, onTabChange, token }) {
           </div>
         )}
       </div>
-      {flashcardLesson && (
-        <FlashcardStudyModal lessonId={flashcardLesson} token={token} onClose={() => setFlashcardLesson(null)} />
-      )}
     </div>
   )
 }
 
 // ── Assignment detail modal ───────────────────────────────────────────────────
 
-function FlashcardStudyModal({ lessonId, token, onClose }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/curriculum/lessons/${lessonId}/flashcards`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(setData)
-      .catch(() => setError('No se pudieron cargar las tarjetas.'))
-      .finally(() => setLoading(false))
-  }, [lessonId])
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1100, padding: 20,
-    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{
-        background: '#fff', borderRadius: 20, padding: '28px 24px',
-        width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 900, color: '#1e293b', margin: 0 }}>
-            📇 {data ? data.lesson_title : 'Flashcards'}
-          </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', lineHeight: 1 }}>×</button>
-        </div>
-        {loading && <p style={{ color: '#9ca3af', textAlign: 'center', padding: 30 }}>Cargando tarjetas…</p>}
-        {error && <p style={{ color: '#ef4444', textAlign: 'center' }}>{error}</p>}
-        {data && (
-          <FlashcardDeck vocab={data.vocabulary} expressions={data.expressions} />
-        )}
-        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ background: '#008080', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncomplete }) {
   const [curriculum, setCurriculum] = useState(null)
-  const [showFlashcards, setShowFlashcards] = useState(false)
   const t = TIPO_ES[assignment.type] || TIPO_ES.homework
 
   useEffect(() => {
@@ -403,7 +339,6 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
   }, [assignment.curriculum_id])
 
   return (
-    <>
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -475,21 +410,6 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
           </div>
         )}
 
-        {assignment.vp_lesson_id && (
-          <div style={{ marginBottom: 16 }}>
-            <button
-              onClick={() => setShowFlashcards(true)}
-              style={{
-                width: '100%', background: 'linear-gradient(135deg, #FF6F61, #ff9b91)',
-                color: '#fff', border: 'none', borderRadius: 12, padding: '13px 18px',
-                fontSize: 15, fontWeight: 800, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}>
-              📇 Ver y Estudiar Flashcards
-            </button>
-          </div>
-        )}
-
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ background: 'rgba(0,128,128,0.08)', color: '#374151', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             Cerrar
@@ -506,14 +426,6 @@ function AssignmentDetailModal({ assignment, token, onClose, onComplete, onUncom
         </div>
       </div>
     </div>
-    {showFlashcards && (
-      <FlashcardStudyModal
-        lessonId={assignment.vp_lesson_id}
-        token={token}
-        onClose={() => setShowFlashcards(false)}
-      />
-    )}
-    </>
   )
 }
 

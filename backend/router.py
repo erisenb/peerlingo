@@ -2242,15 +2242,26 @@ def _ensure_student_enrolled(student: models.User, db: Session) -> None:
 # benchmark after Lesson 15). The lesson number a volume GATES (i.e. the first
 # lesson that requires it to be verified) is one higher than this.
 CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON = {1: 2, 2: 15}
-CAMBRIDGE_OFFICIAL_PREP_URL = "https://www.cambridgeenglish.org/exams-and-tests/qualifications/young-learners/paper/starters/preparation/"
+# Direct links to each volume's own official PDF (verified live on cambridgeenglish.org),
+# rather than Cambridge's general preparation page — that page bundles a dozen other PDFs
+# (word lists, teacher handbooks, FAQs, transcripts) which made it hard for students,
+# especially navigating a page in their second language, to find the right file.
+CAMBRIDGE_VOLUME_PDF_URL = {
+    1: "https://www.cambridgeenglish.org/Images/722535-cambridge-english-young-learners-sample-papers-volume-1.pdf",
+    2: "https://www.cambridgeenglish.org/Images/722536-cambridge-english-young-learners-sample-papers-volume-2.pdf",
+}
 
 
 def _cambridge_assignment_description(volume: int) -> str:
+    url = CAMBRIDGE_VOLUME_PDF_URL[volume]
     return (
         f"Complete the official Cambridge English Pre A1 Starters Reading & Writing "
-        f"sample paper, Volume {volume}, using Cambridge's own preparation page: "
-        f"{CAMBRIDGE_OFFICIAL_PREP_URL} — Listening is not required, Reading & Writing only. "
-        f"Once you've completed it, your tutor will record and verify your score."
+        f"sample paper, Volume {volume}, using the direct official PDF: {url} — "
+        f"Listening is not required, Reading & Writing only. Once you've completed it, "
+        f"your tutor will record and verify your score.\n\n"
+        f"En español: Haz clic en el enlace para descargar el examen oficial en PDF — "
+        f"no necesitas buscar nada más en la página de Cambridge. Solo se requiere la "
+        f"sección de Reading & Writing (no Listening)."
     )
 
 

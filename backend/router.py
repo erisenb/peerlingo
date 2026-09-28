@@ -2095,11 +2095,23 @@ def tutor_get_student_curriculum(student_id: int, current_user: models.User = De
 @router.get("/api/assignments", response_model=list[AssignmentOut])
 def list_assignments(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role == models.UserRole.tutor:
+        # Self-heal every paired student's Cambridge assignments here too, not just
+        # when the tutor opens that specific student's progress page — otherwise a
+        # tutor who hasn't opened a given student's page since the last content
+        # revision keeps seeing stale assignment text in their own list.
+        pairings = db.query(models.TutorStudentPairing).filter_by(tutor_id=current_user.id).all()
+        for p in pairings:
+            _ensure_cambridge_assignments(current_user.id, p.student_id, db)
         rows = (db.query(models.Assignment)
                 .filter(models.Assignment.tutor_id == current_user.id)
                 .order_by(models.Assignment.created_at.desc()).all())
         return [_assignment_out(a, db) for a in rows]
     if current_user.role == models.UserRole.student:
+        # Same self-heal for the student's own view of their assignments — this was
+        # previously never triggered by anything the student themselves could do.
+        pairing = db.query(models.TutorStudentPairing).filter_by(student_id=current_user.id).first()
+        if pairing:
+            _ensure_cambridge_assignments(pairing.tutor_id, current_user.id, db)
         rows = (db.query(models.Assignment)
                 .filter(or_(models.Assignment.student_id == current_user.id,
                             models.Assignment.student_id == None))
@@ -2108,6 +2120,19 @@ def list_assignments(current_user: models.User = Depends(get_current_user), db: 
     # admin sees all
     rows = db.query(models.Assignment).order_by(models.Assignment.created_at.desc()).all()
     return [_assignment_out(a, db) for a in rows]
+
+
+@router.post("/api/admin/cambridge-assignments/resync")
+def resync_all_cambridge_assignments(current_user: models.User = Depends(get_current_user),
+                                      db: Session = Depends(get_db)):
+    """One-shot admin tool: re-sync every paired student's Cambridge Volume 1/2
+    assignment title/description right now, instead of waiting for each
+    tutor/student to next open a view that triggers the self-heal."""
+    _require_admin(current_user)
+    pairings = db.query(models.TutorStudentPairing).all()
+    for p in pairings:
+        _ensure_cambridge_assignments(p.tutor_id, p.student_id, db)
+    return {"ok": True, "pairings_synced": len(pairings)}
 
 @router.post("/api/assignments", response_model=AssignmentOut, status_code=201)
 def create_assignment(body: AssignmentBody, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -525,3 +525,37 @@ def test_cambridge_benchmark_permissions_and_improvement(client, tutor2_token, t
     assert summary["volume1"]["score"] == 18
     assert summary["volume2"]["score"] == 23
     assert summary["improvement"] == 5
+
+
+def test_stale_cambridge_assignment_text_self_heals_on_students_own_view(client, accounts, student3_id):
+    """A student's own assignment list (not just their tutor viewing their
+    progress page) must also self-heal stale Cambridge assignment text —
+    regression test for the exact bug where a student/tutor who never opened
+    the progress page kept seeing outdated links after a content revision."""
+    import router
+    db = router.database.SessionLocal()
+    try:
+        assignment = db.query(router.models.Assignment).filter(
+            router.models.Assignment.student_id == student3_id,
+            router.models.Assignment.title.like('%Volume 1%'),
+        ).first()
+        assert assignment is not None
+        assignment.description = "stale outdated text from a previous revision"
+        db.commit()
+    finally:
+        db.close()
+
+    student3_token = accounts["demo-student3@peerlingo.test"]["token"]
+    rows = client.get("/api/assignments", headers=auth_headers(student3_token)).json()
+    mine = next(a for a in rows if a["student_id"] == student3_id and "Volume 1" in a["title"])
+    assert "stale outdated text" not in mine["description"]
+    assert "722535" in mine["description"]
+
+
+def test_admin_can_bulk_resync_cambridge_assignments(client, admin_token, tutor1_token):
+    r = client.post("/api/admin/cambridge-assignments/resync", headers=auth_headers(admin_token))
+    assert r.status_code == 200
+    assert r.json()["pairings_synced"] >= 1
+
+    r_forbidden = client.post("/api/admin/cambridge-assignments/resync", headers=auth_headers(tutor1_token))
+    assert r_forbidden.status_code == 403

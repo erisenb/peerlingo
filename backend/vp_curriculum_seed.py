@@ -1,5 +1,6 @@
 import json
 import vp_models as models
+from vp_vocab_es import word_es_for
 
 CURRICULUM_DATA = [
     {
@@ -3874,6 +3875,50 @@ def seed_curriculum(db):
             if not hw:
                 hw = models.VPHomeworkAssignment(lesson_id=lesson.id)
                 db.add(hw)
-            hw.vocabulary = json.dumps(lesson_data['vocabulary'])
-            hw.expressions = json.dumps(lesson_data['expressions'])
+            hw.vocabulary = json.dumps(_vocab_with_es(lesson_data['vocabulary'], hw.vocabulary), ensure_ascii=False)
+            hw.expressions = json.dumps(_expressions_with_es(lesson_data['expressions'], hw.expressions), ensure_ascii=False)
         db.commit()
+
+
+def _load_list(raw):
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else (raw or [])
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _vocab_with_es(vocab, existing_raw):
+    """Attaches the authored word_es to each word, and carries over an already
+    AI-translated definition_es when the English word and definition are unchanged —
+    so update_flashcard_es only re-translates what actually changed."""
+    prior = {
+        (v.get('word'), v.get('definition')): v.get('definition_es')
+        for v in _load_list(existing_raw) if isinstance(v, dict) and v.get('definition_es')
+    }
+    out = []
+    for v in vocab:
+        entry = dict(v)
+        word_es = word_es_for(v['word'])
+        if word_es:
+            entry['word_es'] = word_es
+        definition_es = prior.get((v['word'], v['definition']))
+        if definition_es:
+            entry['definition_es'] = definition_es
+        out.append(entry)
+    return out
+
+
+def _expressions_with_es(expressions, existing_raw):
+    prior = {
+        (e.get('expression'), e.get('meaning')): e.get('meaning_es')
+        for e in _load_list(existing_raw) if isinstance(e, dict) and e.get('meaning_es')
+    }
+    out = []
+    for e in expressions:
+        entry = dict(e)
+        meaning_es = prior.get((e['expression'], e['meaning']))
+        if meaning_es:
+            entry['meaning_es'] = meaning_es
+        out.append(entry)
+    return out

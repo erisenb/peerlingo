@@ -1,6 +1,12 @@
 """
-Runs at startup to add Spanish translations (word_es, definition_es, meaning_es)
-to all VPHomeworkAssignment records that don't yet have them.
+Runs at startup to add Spanish translations (definition_es, meaning_es) to all
+VPHomeworkAssignment records that don't yet have them.
+
+word_es is NOT generated here — it is authored in vp_vocab_es.py and attached by
+seed_curriculum, because model-generated word_es sometimes repeated the English word
+(or translated the English `word` itself), leaving a flashcard with the same language
+on both sides. The model's output is merged by position onto the original entries, so
+it can only ever add definition_es / meaning_es, never change word or word_es.
 
 Uses Claude Haiku API for accurate, natural Latin American Spanish translations.
 Only runs on records that haven't been translated yet — safe to call every startup.
@@ -19,7 +25,6 @@ def _translate_lesson(client, vocab: list, expressions: list) -> dict:
         "for Latin American Spanish-speaking teenagers (ages 13-18) who are learning English. "
         "Use natural, everyday Latin American Spanish — not overly formal.\n\n"
         "For each vocabulary word provide:\n"
-        "  word_es: the most natural Spanish equivalent (one word or short phrase)\n"
         "  definition_es: 1-2 sentence Spanish definition a teenager would understand\n\n"
         "For each expression provide:\n"
         "  meaning_es: 1-2 sentences explaining what the expression means in Spanish "
@@ -27,7 +32,7 @@ def _translate_lesson(client, vocab: list, expressions: list) -> dict:
         "IMPORTANT: Return ONLY valid JSON — no markdown, no extra text. "
         "Copy all original fields and ADD the Spanish fields. Structure:\n"
         "{\n"
-        '  "vocabulary": [{original fields + "word_es": "...", "definition_es": "..."}],\n'
+        '  "vocabulary": [{original fields + "definition_es": "..."}],\n'
         '  "expressions": [{original fields + "meaning_es": "..."}]\n'
         "}\n\n"
         f"Vocabulary:\n{words_text}\n\n"
@@ -51,6 +56,20 @@ def _translate_lesson(client, vocab: list, expressions: list) -> dict:
     return json.loads(text)
 
 
+def _merge_field(originals: list, translated, field: str) -> list:
+    """Copies only `field` from the model's output onto the original entries, by
+    position, so the model can't alter word / word_es / expression."""
+    translated = translated if isinstance(translated, list) else []
+    merged = []
+    for i, orig in enumerate(originals):
+        entry = dict(orig)
+        t = translated[i] if i < len(translated) and isinstance(translated[i], dict) else {}
+        if not entry.get(field) and isinstance(t.get(field), str) and t[field].strip():
+            entry[field] = t[field].strip()
+        merged.append(entry)
+    return merged
+
+
 def update_flashcard_es(db):
     try:
         from vp_models import VPHomeworkAssignment
@@ -68,7 +87,15 @@ def update_flashcard_es(db):
             vocab = json.loads(rec.vocabulary) if isinstance(rec.vocabulary, str) else (rec.vocabulary or [])
         except Exception:
             vocab = []
-        if vocab and isinstance(vocab, list) and "word_es" not in vocab[0]:
+        try:
+            exprs = json.loads(rec.expressions) if isinstance(rec.expressions, str) else (rec.expressions or [])
+        except Exception:
+            exprs = []
+        if not isinstance(vocab, list):
+            vocab = []
+        if not isinstance(exprs, list):
+            exprs = []
+        if any("definition_es" not in v for v in vocab) or any("meaning_es" not in e for e in exprs):
             needs_update.append(rec)
 
     if not needs_update:
@@ -96,8 +123,10 @@ def update_flashcard_es(db):
 
             result = _translate_lesson(client, vocab, exprs)
 
-            rec.vocabulary = json.dumps(result.get("vocabulary", vocab), ensure_ascii=False)
-            rec.expressions = json.dumps(result.get("expressions", exprs), ensure_ascii=False)
+            rec.vocabulary = json.dumps(
+                _merge_field(vocab, result.get("vocabulary"), "definition_es"), ensure_ascii=False)
+            rec.expressions = json.dumps(
+                _merge_field(exprs, result.get("expressions"), "meaning_es"), ensure_ascii=False)
             db.commit()
             print(f"[flashcard seed es] ✓ lesson_id={rec.lesson_id}")
         except Exception as e:

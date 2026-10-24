@@ -1068,12 +1068,16 @@ function HorarioTab({ meetings }) {
 
 function FlashcardDeck({ vocab, expressions }) {
   const cards = [
-    ...vocab.map(v => ({
-      front: v.word,
-      back_word: v.word_es || null,
-      back_def: v.definition_es || v.definition,
-      label: 'Palabra',
-    })),
+    ...vocab.map(v => {
+      const back_def = v.definition_es || v.definition
+      return {
+        front: v.word,
+        back_word: v.word_es || null,
+        // Foundational words use the Spanish word itself as the definition — don't show it twice.
+        back_def: v.word_es && back_def?.trim().toLowerCase() === v.word_es.trim().toLowerCase() ? '' : back_def,
+        label: 'Palabra',
+      }
+    }),
     ...expressions.map(e => ({
       front: `"${e.expression}"`,
       back_word: null,

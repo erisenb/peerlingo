@@ -8,10 +8,10 @@ import PublicFooter from '../components/PublicFooter'
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1758525861882-39151c7a9804?w=1400&q=80'
 
 const TESTIMONIALS = [
-  { title: 'Proud of Our Mission', quote: 'When I started PeerLingo, I hoped to connect a handful of students across two countries. Seeing it grow into a community of dedicated tutors and eager learners is what I\'m proudest of — and we\'re only getting started.', name: 'Ethan Isenberg', role: 'Founder & CEO' },
-  { title: 'Growing Together',     quote: 'Watching our website bring in new tutors and students every week has been incredibly rewarding. But my favorite part is still my own sessions — nothing beats seeing my student light up when something finally clicks.', name: 'Divya Jehangir', role: 'Chief Marketing Officer' },
-  { title: 'Learning That Sticks', quote: 'The curriculum is so hands-on and interactive that every session feels like a conversation, not a lecture. I could see my student improving week after week because the lessons actually work.', name: 'Liam Isenberg', role: 'Tutor' },
-  { title: 'Guided Every Step',    quote: 'I\'m only a beginner in Spanish, so I was nervous at first. The tutor guides in every lesson made it easy to teach with confidence — I never felt lost, and neither did my student.', name: 'Isobel Aniello', role: 'Tutor' },
+  { title: 'Proud of Our Mission', quote: 'When I started PeerLingo, I hoped to connect a handful of students across two countries. Seeing it grow into a community of dedicated tutors and eager learners is what I\'m proudest of, and we\'re only getting started.', name: 'Ethan I.', role: 'Founder & CEO' },
+  { title: 'Growing Together',     quote: 'Watching our website bring in new tutors and students every week has been incredibly rewarding. But my favorite part is still my own sessions. Nothing beats seeing my student light up when something finally clicks.', name: 'Divya J.', role: 'Chief Marketing Officer' },
+  { title: 'Learning That Sticks', quote: 'The curriculum is so hands on and interactive that every session feels like a conversation, not a lecture. I could see my student improving week after week because the lessons actually work.', name: 'Liam I.', role: 'Tutor' },
+  { title: 'Guided Every Step',    quote: 'I\'m only a beginner in Spanish, so I was nervous at first. The tutor guides in every lesson made it easy to teach with confidence. I never felt lost, and neither did my student.', name: 'Isobel A.', role: 'Tutor' },
 ]
 
 function useWindowWidth() {

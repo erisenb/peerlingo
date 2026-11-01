@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
 import { useLanguage } from '../context/LanguageContext'
+import { LESSON_GUIDE } from '../data/lessonGuide'
 
 const API = import.meta.env.VITE_API_BASE || ''
 
@@ -154,6 +155,11 @@ function VocabGrid({ words, isMobile }) {
   )
 }
 
+// Durations are estimates, so show them rounded to the nearest 5 minutes.
+function approxMinutes(min) {
+  return `~${Math.max(5, Math.round(min / 5) * 5)} min`
+}
+
 const SECTION_ICON = { discussion: '💬', vocabulary: '📚', concept: '✏️', activity: '🎮', reading: '📖', wrap_up: '✅' }
 const SECTION_COLOR = { discussion: '#2563eb', vocabulary: '#008080', concept: '#7c3aed', activity: '#FF6F61', reading: '#0f2b3d', wrap_up: '#16a34a' }
 
@@ -167,7 +173,7 @@ function SectionPreview({ section, isMobile, isEs }) {
     <SectionBlock
       icon={SECTION_ICON[section.kind] || '📌'}
       title={section.label || section.key}
-      duration={section.duration_minutes ? `${section.duration_minutes} min` : undefined}
+      duration={section.duration_minutes ? approxMinutes(section.duration_minutes) : undefined}
       accentColor={SECTION_COLOR[section.kind] || '#008080'}
     >
       {section.kind === 'vocabulary' && section.words?.length > 0 && (
@@ -301,7 +307,7 @@ function LessonCard({ lesson, color, isMobile, isEs }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {ld?.duration_minutes && !isMobile && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#7a9cac' }}>{ld.duration_minutes} min</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#7a9cac' }}>{approxMinutes(ld.duration_minutes)}</span>
           )}
           {ld && (
             <span style={{
@@ -343,6 +349,121 @@ function MilestoneCard({ milestone, isEs }) {
   )
 }
 
+// ── Lessons 1-15 at a glance ──────────────────────────────────────────────────
+// A poster-style map of the Cambridge arc: what each lesson contains and how a
+// tutor can flex it for a student who is strong or weak at its main skill.
+
+function phaseColor(n) {
+  return PHASES.find(p => n >= p.from && n <= p.to)?.color || '#008080'
+}
+
+function AdviceRow({ icon, label, text, tint, accent }) {
+  return (
+    <div style={{ background: tint, borderRadius: 8, padding: '8px 10px' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: accent, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>
+        {icon} {label}
+      </div>
+      <div style={{ fontSize: 12.5, color: '#3d6275', lineHeight: 1.5 }}>{text}</div>
+    </div>
+  )
+}
+
+function GuideCard({ item, isEs }) {
+  const color = phaseColor(item.n)
+  const t = obj => (isEs ? obj.es : obj.en)
+  const skill = t(item.skill).toLowerCase()
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 14, borderTop: `5px solid ${color}`,
+      boxShadow: '0 2px 10px rgba(15,43,61,0.07)', padding: '14px 14px 16px',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%', background: color, color: '#fff', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900,
+        }}>
+          {item.n}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t(item.skill)}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2b3d', lineHeight: 1.25 }}>{t(item.title)}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {t(item.contains).map(c => (
+          <span key={c} style={{ fontSize: 11.5, fontWeight: 600, color: '#0f2b3d', background: 'rgba(0,128,128,0.07)', borderRadius: 999, padding: '3px 9px' }}>
+            {c}
+          </span>
+        ))}
+      </div>
+
+      <AdviceRow
+        icon="💪"
+        label={isEs ? `Fuerte en ${skill}` : `Strong at ${skill}`}
+        text={t(item.strong)}
+        tint="rgba(22,163,74,0.07)"
+        accent="#15803d"
+      />
+      <AdviceRow
+        icon="🌱"
+        label={isEs ? `Necesita apoyo en ${skill}` : `Needs support with ${skill}`}
+        text={t(item.weak)}
+        tint="rgba(255,111,97,0.08)"
+        accent="#c2410c"
+      />
+
+      {item.milestone && (
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#c2410c', borderTop: '1px dashed rgba(255,111,97,0.5)', paddingTop: 8, marginTop: 'auto' }}>
+          📝 {t(item.milestone)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LessonGuideGraphic({ width, isEs }) {
+  const cols = width < 640 ? 1 : width < 960 ? 2 : 3
+  const isMobile = width < 768
+  return (
+    <section
+      aria-label={isEs ? 'Guía de las lecciones 1 a 15' : 'Lessons 1 to 15 tutor guide'}
+      style={{
+        background: 'linear-gradient(160deg, #0f2b3d 0%, #0d4a54 55%, #008080 100%)',
+        borderRadius: 22, padding: isMobile ? '26px 14px 18px' : '38px 30px 30px',
+        marginBottom: isMobile ? 40 : 56, boxShadow: '0 12px 40px rgba(15,43,61,0.18)',
+      }}
+    >
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? 18 : 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#FF6F61', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 8 }}>
+          {isEs ? 'Guía rápida para tutores' : 'Tutor quick guide'}
+        </div>
+        <h2 style={{ fontSize: isMobile ? 24 : 34, fontWeight: 900, color: '#fff', margin: '0 0 10px', lineHeight: 1.2 }}>
+          {isEs ? 'Las lecciones 1–15 de un vistazo' : 'Lessons 1–15 at a glance'}
+        </h2>
+        <p style={{ fontSize: isMobile ? 14 : 15, color: 'rgba(255,255,255,0.8)', maxWidth: 620, margin: '0 auto', lineHeight: 1.6 }}>
+          {isEs
+            ? 'Qué contiene cada lección y cómo adaptarla: avanza más rápido con un estudiante fuerte en la habilidad principal, o simplifica para uno que necesita apoyo.'
+            : "What each lesson contains, and how to flex it: stretch a student who's strong at the lesson's main skill, or simplify for one who needs support."}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 16px', marginTop: 14 }}>
+          {PHASES.filter(p => p.from <= 15).map(p => (
+            <span key={p.from} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: p.color, border: '1px solid rgba(255,255,255,0.5)' }} />
+              {isEs ? p.title.es : p.title.en}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 12 }}>
+        {LESSON_GUIDE.map(item => <GuideCard key={item.n} item={item} isEs={isEs} />)}
+      </div>
+    </section>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CurriculumPage() {
@@ -373,6 +494,8 @@ export default function CurriculumPage() {
       <PublicNav />
 
       <main style={{ flex: 1, maxWidth: 960, margin: '0 auto', padding: isMobile ? '40px 16px 60px' : '60px 32px 80px', width: '100%', boxSizing: 'border-box' }}>
+
+        <LessonGuideGraphic width={width} isEs={isEs} />
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 44 }}>

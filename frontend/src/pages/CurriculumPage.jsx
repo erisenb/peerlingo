@@ -20,10 +20,6 @@ function useWindowWidth() {
 // ── Course structure ──────────────────────────────────────────────────────────
 // Mirrors the unified Foundational English course (backend/vp_lessons_foundational.py).
 // Cambridge milestones match CAMBRIDGE_BENCHMARK_DUE_AFTER_LESSON in router.py.
-// This public page presents only Lessons 1-15 (the Cambridge arc); the full
-// 20-lesson course is shown to signed-in students, tutors and admins.
-
-const PUBLIC_LESSON_COUNT = 15
 
 const PHASES = [
   {
@@ -48,6 +44,14 @@ const PHASES = [
     desc: {
       en: 'Family and body parts, actions in the present continuous, question words, numbers and food, factual reading and picture stories, finishing with full Volume 2 preparation.',
       es: 'Familia y partes del cuerpo, acciones en presente continuo, palabras interrogativas, números y comida, lectura de datos e historias con imágenes, terminando con la preparación completa para el Volumen 2.',
+    },
+  },
+  {
+    from: 16, to: 20, color: '#FF6F61',
+    title: { en: 'Past, Future & Real Conversation', es: 'Pasado, Futuro y Conversación Real' },
+    desc: {
+      en: 'The past tense, going to and will, connecting ideas with and, but, because and so, longer reading, and a final unscripted conversation that uses the whole course.',
+      es: 'El pasado, going to y will, conectar ideas con and, but, because y so, lecturas más largas y una conversación final libre que usa todo el curso.',
     },
   },
 ]
@@ -444,7 +448,7 @@ function LessonGuideGraphic({ width, isEs }) {
             : "What each lesson contains, and how to flex it: stretch a student who's strong at the lesson's main skill, or simplify for one who needs support."}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 16px', marginTop: 14 }}>
-          {PHASES.map(p => (
+          {PHASES.filter(p => p.from <= 15).map(p => (
             <span key={p.from} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: p.color, border: '1px solid rgba(255,255,255,0.5)' }} />
               {isEs ? p.title.es : p.title.en}
@@ -474,12 +478,12 @@ export default function CurriculumPage() {
   useEffect(() => {
     fetch(`${API}/api/curriculum/by-level/foundational`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(d => setLessons((d.lessons || []).filter(l => l.lesson_number <= PUBLIC_LESSON_COUNT)))
+      .then(d => setLessons(d.lessons || []))
       .catch(() => setError(true))
   }, [])
 
   const stats = [
-    [String(PUBLIC_LESSON_COUNT), isEs ? 'lecciones' : 'lessons'],
+    ['20', isEs ? 'lecciones' : 'lessons'],
     ['30–40', isEs ? 'minutos por sesión' : 'minutes per session'],
     ['2', isEs ? 'exámenes Cambridge' : 'Cambridge benchmarks'],
     ['1', isEs ? 'curso para todos' : 'course for everyone'],
@@ -503,8 +507,8 @@ export default function CurriculumPage() {
           </h1>
           <p style={{ fontSize: isMobile ? 15 : 18, color: '#5a7d8c', maxWidth: 640, margin: '0 auto', lineHeight: 1.65 }}>
             {isEs
-              ? 'Un solo curso de 15 lecciones que todos los estudiantes siguen en orden. Cada lección reutiliza lo aprendido antes, y el curso prepara al estudiante para el examen Cambridge English Pre A1 Starters.'
-              : 'One 15-lesson course that every student follows in order. Each lesson builds on the ones before it, and the whole course prepares students for the Cambridge English Pre A1 Starters exam.'}
+              ? 'Un solo curso de 20 lecciones que todos los estudiantes siguen en orden. Cada lección reutiliza lo aprendido antes, y el curso prepara al estudiante para el examen Cambridge English Pre A1 Starters.'
+              : 'One 20-lesson course that every student follows in order. Each lesson builds on the ones before it, and the whole course prepares students for the Cambridge English Pre A1 Starters exam.'}
           </p>
         </div>
 
@@ -542,7 +546,7 @@ export default function CurriculumPage() {
 
         {/* Course map */}
         <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: '#0f2b3d', margin: '0 0 6px', textAlign: 'center' }}>
-          {isEs ? `Las ${PUBLIC_LESSON_COUNT} lecciones` : `The ${PUBLIC_LESSON_COUNT} lessons`}
+          {isEs ? 'Las 20 lecciones' : 'The 20 lessons'}
         </h2>
         <p style={{ fontSize: 14, color: '#7a9cac', textAlign: 'center', margin: '0 0 28px' }}>
           {isEs ? 'Toca una lección para ver su vista previa.' : 'Tap any lesson to preview it.'}

@@ -349,8 +349,8 @@ function MilestoneCard({ milestone, isEs }) {
   )
 }
 
-// ── Lessons 1-15 at a glance ──────────────────────────────────────────────────
-// A poster-style map of the Cambridge arc: what each lesson contains and how a
+// ── All 20 lessons at a glance ─────────────────────────────────────────────────
+// A poster-style map of the whole course: what each lesson contains and how a
 // tutor can flex it for a student who is strong or weak at its main skill.
 
 function phaseColor(n) {
@@ -428,7 +428,7 @@ function LessonGuideGraphic({ width, isEs }) {
   const isMobile = width < 768
   return (
     <section
-      aria-label={isEs ? 'Guía de las lecciones 1 a 15' : 'Lessons 1 to 15 tutor guide'}
+      aria-label={isEs ? 'Guía de las lecciones 1 a 20' : 'Lessons 1 to 20 tutor guide'}
       style={{
         background: 'linear-gradient(160deg, #0f2b3d 0%, #0d4a54 55%, #008080 100%)',
         borderRadius: 22, padding: isMobile ? '26px 14px 18px' : '38px 30px 30px',
@@ -440,7 +440,7 @@ function LessonGuideGraphic({ width, isEs }) {
           {isEs ? 'Guía rápida para tutores' : 'Tutor quick guide'}
         </div>
         <h2 style={{ fontSize: isMobile ? 24 : 34, fontWeight: 900, color: '#fff', margin: '0 0 10px', lineHeight: 1.2 }}>
-          {isEs ? 'Las lecciones 1–15 de un vistazo' : 'Lessons 1–15 at a glance'}
+          {isEs ? 'Las 20 lecciones de un vistazo' : 'All 20 lessons at a glance'}
         </h2>
         <p style={{ fontSize: isMobile ? 14 : 15, color: 'rgba(255,255,255,0.8)', maxWidth: 620, margin: '0 auto', lineHeight: 1.6 }}>
           {isEs
@@ -448,7 +448,7 @@ function LessonGuideGraphic({ width, isEs }) {
             : "What each lesson contains, and how to flex it: stretch a student who's strong at the lesson's main skill, or simplify for one who needs support."}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 16px', marginTop: 14 }}>
-          {PHASES.filter(p => p.from <= 15).map(p => (
+          {PHASES.map(p => (
             <span key={p.from} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: p.color, border: '1px solid rgba(255,255,255,0.5)' }} />
               {isEs ? p.title.es : p.title.en}

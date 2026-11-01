@@ -1,5 +1,5 @@
-// At-a-glance tutor guide for Lessons 1-15 (the Cambridge Pre A1 Starters arc),
-// shown at the top of the public curriculum page. Each lesson names its main
+// At-a-glance tutor guide for all 20 Foundational English lessons, shown at
+// the top of the public curriculum page. Each lesson names its main
 // skill, what it covers, and how to flex for a student who is strong or weak
 // at that skill. Advice condenses the per-section if_struggling /
 // if_finishes_early guidance in backend/vp_lessons_foundational.py; keep the
@@ -262,5 +262,91 @@ export const LESSON_GUIDE = [
       es: 'Prioriza lo más evaluado: plurales, colores y ropa, preposiciones y ortografía. Ve despacio y usa las listas paso a paso.',
     },
     milestone: { en: 'Cambridge Volume 2 next', es: 'Luego: Cambridge Volumen 2' },
+  },
+  {
+    n: 16,
+    skill: { en: 'Grammar', es: 'Gramática' },
+    title: { en: 'Volume 2 Debrief & Past Tense', es: 'Repaso del Volumen 2 y Pasado' },
+    contains: {
+      en: ['Volume 2 results review', 'Regular past -ed + 3 spelling rules', '6 irregular verbs', 'My Real Story'],
+      es: ['Repaso de resultados del Volumen 2', 'Pasado regular -ed + 3 reglas', '6 verbos irregulares', 'Mi historia real'],
+    },
+    strong: {
+      en: 'Combine two irregular verbs in one sentence: "I went to the store and got some milk." Add how they felt, using Lesson 1 emotions.',
+      es: 'Combina dos verbos irregulares en una oración: "I went to the store and got some milk." Agrega cómo se sintió, con emociones de la Lección 1.',
+    },
+    weak: {
+      en: 'Teach only "add -ed" with play, walk, watch, plus 3 irregulars (went, had, ate). Build their story one sentence at a time.',
+      es: 'Enseña solo "agregar -ed" con play, walk, watch, más 3 irregulares (went, had, ate). Construye su historia una oración a la vez.',
+    },
+  },
+  {
+    n: 17,
+    skill: { en: 'Grammar', es: 'Gramática' },
+    title: { en: 'Future: Going To / Will', es: 'Futuro: Going To / Will' },
+    contains: {
+      en: ['going to for plans', 'will for decisions & predictions', 'Future plans with emotions'],
+      es: ['going to para planes', 'will para decisiones y predicciones', 'Planes futuros con emociones'],
+    },
+    strong: {
+      en: 'Have them describe a family member\'s plan ("She is going to visit her grandmother") and make a "will" prediction about you.',
+      es: 'Pídele que describa el plan de un familiar ("She is going to visit her grandmother") y haga una predicción con "will" sobre ti.',
+    },
+    weak: {
+      en: 'Teach only "going to" with "I", using a frame: "This weekend, I am going to ___." Save "will" for Lesson 18.',
+      es: 'Enseña solo "going to" con "I", usando un marco: "This weekend, I am going to ___." Deja "will" para la Lección 18.',
+    },
+  },
+  {
+    n: 18,
+    skill: { en: 'Sentence building', es: 'Construcción de oraciones' },
+    title: { en: 'And, But, Because, So', es: 'And, But, Because, So' },
+    contains: {
+      en: ['4 connecting words', 'Joining two sentences', 'Sentences using the whole course'],
+      es: ['4 palabras de enlace', 'Unir dos oraciones', 'Oraciones con todo el curso'],
+    },
+    strong: {
+      en: 'Have them build one long sentence with 2 connectors: "I am tired because I ran, so I am going to sleep."',
+      es: 'Pídele que forme una oración larga con 2 conectores: "I am tired because I ran, so I am going to sleep."',
+    },
+    weak: {
+      en: 'Focus on "and" and "but" first, then use a starter for "because": "I am ___ because ___."',
+      es: 'Empieza con "and" y "but", y luego usa un inicio para "because": "I am ___ because ___."',
+    },
+  },
+  {
+    n: 19,
+    skill: { en: 'Reading', es: 'Lectura' },
+    title: { en: 'Reading: Putting It All Together', es: 'Lectura: Todo en Conjunto' },
+    contains: {
+      en: ['Connected passage: Maria\'s Day', 'Comprehension questions', 'Spotting course grammar in real text'],
+      es: ['Texto: Maria\'s Day', 'Preguntas de comprensión', 'Encontrar la gramática del curso en un texto real'],
+    },
+    strong: {
+      en: 'Have them retell the story in their own words in 3–4 sentences, pointing out tenses they used.',
+      es: 'Pídele que vuelva a contar la historia con sus propias palabras en 3–4 oraciones, señalando los tiempos que usó.',
+    },
+    weak: {
+      en: 'Read 2 sentences at a time and check understanding after each chunk instead of reading it all at once.',
+      es: 'Lean 2 oraciones a la vez y revisa la comprensión después de cada parte en lugar de leer todo de una vez.',
+    },
+  },
+  {
+    n: 20,
+    skill: { en: 'Conversation', es: 'Conversación' },
+    title: { en: 'Final Conversation', es: 'Conversación Final' },
+    contains: {
+      en: ['Quick-fire course review', 'Free, unscripted conversation', 'Celebrating the full course'],
+      es: ['Repaso rápido del curso', 'Conversación libre', 'Celebración del curso completo'],
+    },
+    strong: {
+      en: 'Let them lead the conversation and ask real follow-up questions about anything they say.',
+      es: 'Deja que dirija la conversación y haz preguntas de seguimiento reales sobre lo que diga.',
+    },
+    weak: {
+      en: 'Slow the review to 5–10 seconds per prompt, model your own answer first, and accept short answers. Participation over perfection.',
+      es: 'Da 5–10 segundos por pregunta en el repaso, responde tú primero como ejemplo y acepta respuestas cortas. Participar importa más que la perfección.',
+    },
+    milestone: { en: 'Course complete! 🎓', es: '¡Curso completo! 🎓' },
   },
 ]

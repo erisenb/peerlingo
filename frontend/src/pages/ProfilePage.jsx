@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -121,6 +121,17 @@ export default function ProfilePage() {
   const [state, setState] = useState(user?.state || '')
   const [grade, setGrade] = useState(user?.grade || '')
   const [spanishLevel, setSpanishLevel] = useState(user?.spanish_level || '')
+
+  // Tutor: their paired students, so they can see each student's login username
+  // (students sign in with a username stored in the email field).
+  const [myStudents, setMyStudents] = useState(null)
+  useEffect(() => {
+    if (!isTutor || !token) return
+    fetch(`${API_BASE}/api/users/students`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setMyStudents)
+      .catch(() => setMyStudents([]))
+  }, [isTutor, token])
 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -287,6 +298,23 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          {/* Tutor: my students and their usernames */}
+          {isTutor && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+              <h3 style={sectionHeadStyle}>My Students</h3>
+              {myStudents === null && <div style={{ fontSize: 14, color: '#7a9cac' }}>Loading…</div>}
+              {myStudents?.length === 0 && <div style={{ fontSize: 14, color: '#7a9cac' }}>You don't have any students yet.</div>}
+              {myStudents?.map(s => (
+                <div key={s.id} style={{ background: 'rgba(0,128,128,0.05)', border: '1px solid rgba(0,128,128,0.18)', borderRadius: 10, padding: '10px 16px' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2b3d' }}>{s.full_name}</div>
+                  <div style={{ fontSize: 13, color: '#3d6275', marginTop: 2, wordBreak: 'break-all' }}>
+                    <span style={{ fontWeight: 700, color: '#7a9cac' }}>Username: </span>{s.email}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Editable fields */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

@@ -1062,6 +1062,10 @@ function MyStudentsTab({ token }) {
               <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
                 {[s.grade && `Grade ${s.grade}`, s.school, [s.city, s.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
               </div>
+              {/* Students sign in with a username stored in the email field */}
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, wordBreak: 'break-all' }}>
+                <span style={{ fontWeight: 700 }}>Username:</span> {s.email}
+              </div>
               {s.english_level && (
                 <span style={{ ...badge('rgba(0,128,128,0.1)', '#008080'), display: 'inline-block', marginTop: 6, fontSize: 11 }}>
                   {s.english_level.charAt(0).toUpperCase() + s.english_level.slice(1)} English
